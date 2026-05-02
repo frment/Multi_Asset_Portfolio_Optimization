@@ -1,0 +1,47 @@
+# Asset universe configuration
+
+project_name: "Crypto-Enhanced Multi-Asset Portfolio Optimization"
+start_date: "2018-01-01"
+frequency: "daily"
+
+assets:
+  crypto:
+    - "BTC-USD"
+    - "ETH-USD"
+  equities:
+    - "SPY"
+    - "QQQ"
+  defensive:
+    - "GLD"
+    - "TLT"
+
+all_tickers:
+  - "BTC-USD"
+  - "ETH-USD"
+  - "SPY"
+  - "QQQ"
+  - "GLD"
+  - "TLT"
+
+crypto_assets:
+  - "BTC-USD"
+  - "ETH-USD"
+
+benchmark_assets:
+  equal_weight:
+    - "BTC-USD"
+    - "ETH-USD"
+    - "SPY"
+    - "QQQ"
+    - "GLD"
+    - "TLT"
+  sixty_forty:
+    - "SPY"
+    - "TLT"
+  fixed_small_crypto:
+    - "BTC-USD"
+    - "ETH-USD"
+    - "SPY"
+    - "QQQ"
+    - "GLD"
+    - "TLT"

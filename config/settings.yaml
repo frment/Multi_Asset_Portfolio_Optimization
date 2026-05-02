@@ -1,0 +1,51 @@
+# Project settings configuration
+
+python_version: "3.11"
+
+data:
+  source: "yfinance"
+  start_date: "2018-01-01"
+  frequency: "daily"
+  price_field: "Adj Close"
+  fill_method: "ffill"
+
+portfolio_constraints:
+  long_only: true
+  weights_sum_to_one: true
+  max_weight_per_asset: 0.35
+  max_total_crypto_weight: 0.20
+
+backtest:
+  rebalance_frequency: "monthly"
+  lookback_window_days: 252
+  trading_days_per_year: 252
+  risk_free_rate: 0.0
+
+benchmarks:
+  equal_weight:
+    enabled: true
+    description: "Equal allocation across all active tickers"
+
+  sixty_forty:
+    enabled: true
+    description: "60% SPY + 40% TLT"
+    weights:
+      SPY: 0.60
+      TLT: 0.40
+
+  fixed_small_crypto:
+    enabled: true
+    description: "5% BTC, 5% ETH, remaining 90% split equally across SPY, QQQ, GLD, TLT"
+    weights:
+      BTC-USD: 0.05
+      ETH-USD: 0.05
+      SPY: 0.225
+      QQQ: 0.225
+      GLD: 0.225
+      TLT: 0.225
+
+paths:
+  data_raw: "data/raw"
+  data_processed: "data/processed"
+  notebooks: "notebooks"
+  tests: "tests"

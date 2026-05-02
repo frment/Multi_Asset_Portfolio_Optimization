@@ -1,0 +1,19 @@
+# Core data and computation
+pandas>=2.0
+numpy>=1.24
+scipy>=1.10
+
+# Data sourcing
+yfinance>=0.2.18
+
+# Visualization
+matplotlib>=3.7
+
+# Configuration
+pyyaml>=6.0
+
+# Notebooks
+jupyter>=1.0
+
+# Testing
+pytest>=7.3
