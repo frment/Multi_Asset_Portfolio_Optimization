@@ -114,6 +114,50 @@ class TestGetRebalanceDates:
         dates = get_rebalance_dates(synthetic_returns.index, lookback_window=126)
         assert dates == sorted(dates)
 
+    def test_quarterly_first_day_of_each_quarter(self, synthetic_returns):
+        dates = get_rebalance_dates(
+            synthetic_returns.index,
+            lookback_window=126,
+            rebalance_frequency="quarterly",
+        )
+        for date in dates:
+            period = pd.Period(date, freq="Q")
+            period_days = synthetic_returns.index[synthetic_returns.index.to_period("Q") == period]
+            assert date == period_days[0], (
+                f"Quarterly rebalance date {date} is not first trading day of period {period}"
+            )
+
+    def test_weekly_first_day_of_each_week(self, synthetic_returns):
+        dates = get_rebalance_dates(
+            synthetic_returns.index,
+            lookback_window=126,
+            rebalance_frequency="weekly",
+        )
+        week_periods = synthetic_returns.index.to_period("W-FRI")
+        for date in dates:
+            period = pd.Period(date, freq="W-FRI")
+            period_days = synthetic_returns.index[week_periods == period]
+            assert date == period_days[0], (
+                f"Weekly rebalance date {date} is not first trading day of period {period}"
+            )
+
+    def test_monthly_default_matches_explicit_monthly(self, synthetic_returns):
+        default_dates = get_rebalance_dates(synthetic_returns.index, lookback_window=126)
+        explicit_dates = get_rebalance_dates(
+            synthetic_returns.index,
+            lookback_window=126,
+            rebalance_frequency="monthly",
+        )
+        assert default_dates == explicit_dates
+
+    def test_invalid_frequency_raises(self, synthetic_returns):
+        with pytest.raises(ValueError, match="Unsupported rebalance_frequency"):
+            get_rebalance_dates(
+                synthetic_returns.index,
+                lookback_window=126,
+                rebalance_frequency="yearly",
+            )
+
 
 # ---------------------------------------------------------------------------
 # b) No look-ahead / temporal separation
@@ -134,6 +178,26 @@ class TestTemporalSeparation:
             assert training_window.index[-1] < rebal_date, (
                 f"Training window last day {training_window.index[-1]} >= rebalance {rebal_date}"
             )
+
+    @pytest.mark.parametrize("frequency", ["monthly", "quarterly", "weekly"])
+    def test_training_window_ends_before_rebalance_all_frequencies(
+        self,
+        synthetic_returns,
+        minimal_optimizer_config,
+        frequency,
+    ):
+        """Temporal separation must hold regardless of rebalance frequency."""
+        _, weights_hist, _ = run_min_variance_backtest(
+            returns=synthetic_returns,
+            optimizer_config=minimal_optimizer_config,
+            lookback_window=126,
+            rebalance_frequency=frequency,
+        )
+        for rebal_date in weights_hist.index:
+            pos = synthetic_returns.index.get_loc(rebal_date)
+            training_window = synthetic_returns.iloc[pos - 126 : pos]
+            assert rebal_date not in training_window.index
+            assert training_window.index[-1] < rebal_date
 
 
 # ---------------------------------------------------------------------------

@@ -42,30 +42,55 @@ from src.optimizer import load_optimizer_config, minimise_variance
 def get_rebalance_dates(
     index: pd.DatetimeIndex,
     lookback_window: int,
+    rebalance_frequency: str = "monthly",
 ) -> list[pd.Timestamp]:
-    """Return the first available trading day of each calendar month.
+    """Return the first available trading day for each rebalance period.
 
-    Only months where at least `lookback_window` trading days of prior history
+    Supports monthly, quarterly, and weekly schedules.
+
+    Only periods where at least `lookback_window` trading days of prior history
     exist are included, because the optimiser needs a full training window.
 
     Args:
         index           : DatetimeIndex of the full returns DataFrame.
         lookback_window : Minimum number of daily observations required before
                           a rebalance date to fit the covariance estimator.
+        rebalance_frequency: Rebalance schedule. One of:
+                          - "monthly"
+                          - "quarterly"
+                          - "weekly"
 
     Returns:
         Sorted list of rebalance timestamps (subset of `index`).
+
+    Raises:
+        ValueError: If `rebalance_frequency` is unsupported.
     """
-    # Group by (year, month) and take the first available trading day.
-    first_of_month = (
+    frequency = rebalance_frequency.lower().strip()
+
+    # Group by period and take the first available trading day in each period.
+    if frequency == "monthly":
+        period_index = index.to_period("M")
+    elif frequency == "quarterly":
+        period_index = index.to_period("Q")
+    elif frequency == "weekly":
+        period_index = index.to_period("W-FRI")
+    else:
+        raise ValueError(
+            "Unsupported rebalance_frequency: "
+            f"{rebalance_frequency}. Use 'monthly', 'quarterly', or 'weekly'."
+        )
+
+    first_of_period = (
         index.to_series()
-        .groupby([index.year, index.month])
+        .groupby(period_index)
         .first()
+        .sort_values()
         .values
     )
 
     rebalance_dates = []
-    for date in first_of_month:
+    for date in first_of_period:
         # How many rows of data exist *before* this date?
         pos = index.get_loc(date)
         if pos >= lookback_window:
@@ -148,8 +173,10 @@ def run_min_variance_backtest(
     returns: pd.DataFrame,
     optimizer_config: dict[str, Any] | None = None,
     lookback_window: int = 252,
+    rebalance_frequency: str = "monthly",
+    covariance_method: str = "sample",
 ) -> tuple[pd.Series, pd.DataFrame, pd.DataFrame]:
-    """Run a monthly-rebalanced, rolling minimum variance backtest.
+    """Run a rolling minimum variance backtest.
 
     At each rebalance date the optimiser sees only the trailing lookback window
     (strictly before the rebalance date).  The resulting weights are then held
@@ -164,6 +191,10 @@ def run_min_variance_backtest(
         optimizer_config : Constraint config dict from ``load_optimizer_config()``.
                            If None, loaded from YAML automatically.
         lookback_window  : Number of trading days used as the estimation window.
+        rebalance_frequency: Rebalance schedule. One of ``monthly``, ``quarterly``,
+                   or ``weekly``.
+        covariance_method: Covariance estimator for the optimiser. One of
+               ``sample`` or ``ledoit_wolf``.
 
     Returns:
         A tuple of:
@@ -177,7 +208,11 @@ def run_min_variance_backtest(
     if optimizer_config is None:
         optimizer_config = load_optimizer_config()
 
-    rebalance_dates = get_rebalance_dates(returns.index, lookback_window)
+    rebalance_dates = get_rebalance_dates(
+        returns.index,
+        lookback_window,
+        rebalance_frequency=rebalance_frequency,
+    )
 
     if not rebalance_dates:
         raise ValueError(
@@ -201,7 +236,11 @@ def run_min_variance_backtest(
 
         # --- Optimise weights on the training window ---------------------------
         try:
-            weights = minimise_variance(training_window, config=optimizer_config)
+            weights = minimise_variance(
+                training_window,
+                config=optimizer_config,
+                covariance_method=covariance_method,
+            )
         except ValueError as exc:
             print(f"  Warning: optimisation failed on {rebal_date.date()} — {exc}")
             continue

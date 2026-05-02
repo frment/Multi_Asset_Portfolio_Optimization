@@ -56,3 +56,12 @@ def load_settings() -> dict[str, Any]:
         Dictionary with portfolio constraints, benchmarks, and parameters.
     """
     return load_yaml("settings.yaml")
+
+
+def load_robustness() -> dict[str, Any]:
+    """Load Chapter 2 robustness configuration.
+
+    Returns:
+        Dictionary with first-pass robustness setup.
+    """
+    return load_yaml("robustness.yaml")

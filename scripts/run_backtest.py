@@ -92,11 +92,19 @@ def main() -> None:
 
         optimizer_config = load_optimizer_config()
         lookback = int(settings.get("backtest", {}).get("lookback_window_days", 252))
+        rebalance_frequency = str(
+            settings.get("backtest", {}).get("rebalance_frequency", "monthly")
+        )
         risk_free_rate = float(settings.get("backtest", {}).get("risk_free_rate", 0.0))
 
-        rebalance_dates = get_rebalance_dates(returns.index, lookback)
+        rebalance_dates = get_rebalance_dates(
+            returns.index,
+            lookback,
+            rebalance_frequency=rebalance_frequency,
+        )
         print(f"\nLookback window  : {lookback} trading days")
-        print(f"Rebalance dates  : {len(rebalance_dates)} monthly periods")
+        print(f"Rebalance freq   : {rebalance_frequency}")
+        print(f"Rebalance dates  : {len(rebalance_dates)} periods")
         print(f"  First rebalance: {rebalance_dates[0].date()}")
         print(f"  Last rebalance : {rebalance_dates[-1].date()}")
 
@@ -106,6 +114,7 @@ def main() -> None:
             returns=returns,
             optimizer_config=optimizer_config,
             lookback_window=lookback,
+            rebalance_frequency=rebalance_frequency,
         )
         print(f"  OOS period     : {minvar_returns.index[0].date()} to {minvar_returns.index[-1].date()}")
         print(f"  OOS trading days: {len(minvar_returns)}")

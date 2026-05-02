@@ -42,7 +42,9 @@ The intent is that a recruiter, portfolio manager, or collaborator can open this
 
 ## Current Scope
 
-**Chapter 1 is complete: data pipeline, benchmarks, first optimizer, first OOS walk-forward validation, turnover reporting, backtest test suite, and initial research narrative are now in place as a reproducible baseline.**
+**Chapter 1 is complete** as the reproducible OOS baseline.
+
+**Chapter 2 is now closed** for robustness, turnover and implementability, simple net-of-cost analysis, covariance stability (sample vs Ledoit-Wolf), a light bootstrap confidence layer, and research-grade reporting notebooks.
 
 What exists today:
 
@@ -58,12 +60,12 @@ What exists today:
 
 What does **not** exist yet:
 
-- Robustness/sensitivity studies (lookback, caps, rebalance frequency)
-- Alternative covariance estimators (e.g., Ledoit-Wolf)
-- Transaction cost net-of-cost evaluation
+- Full regime-conditional modeling and richer subperiod inference
+- Asset-specific execution/slippage/impact cost modeling
+- Risk-space decomposition (for example, marginal contribution to variance)
 - Unit tests for preprocessing and metrics modules
 
-The project has moved beyond scaffold stage and now has a reproducible first research baseline ready for stress testing in Chapter 2.
+The project has moved beyond scaffold stage and now has a closed Chapter 2 with conservative conclusions and explicit limits.
 
 ---
 
@@ -81,12 +83,12 @@ The objective is not to claim optimality early. It is to establish a reliable ba
 
 ## Immediate Next Build
 
-Chapter 2 priorities:
+Chapter 3 priorities:
 
-1. Robustness and sensitivity analysis (lookback windows, crypto cap, rebalance frequency)
-2. Turnover measurement and transaction cost-aware evaluation
-3. Improved covariance estimation (Ledoit-Wolf shrinkage)
-4. Sub-period/regime analysis and statistical confidence checks
+1. Regime and subperiod structure as a first-class modeling layer
+2. Expanded confirmatory design (pre-registered contrasts and multiple-testing discipline)
+3. Richer implementation layer beyond a flat bps wedge
+4. Next objective-family extensions only after the above diagnostics
 
 ---
 
@@ -230,12 +232,12 @@ These are documented for transparency. They are **not yet implemented**.
 
 ## What Will Be Built Next
 
-The immediate next steps (Chapter 2 / Phase 5 in `TODO.md`):
+The immediate next steps are now Chapter 3 / next methodological block (see `TODO.md`):
 
-1. Sensitivity analysis for lookback, caps, and rebalance schedule
-2. Turnover and transaction cost impact analysis
-3. Alternative covariance estimator (Ledoit-Wolf) integration
-4. Sub-period robustness checks and statistical confidence analysis
+1. Regime-conditional robustness and subperiod diagnostics
+2. Extended confirmatory layer with explicit error-rate control
+3. More realistic implementation-cost modeling
+4. Additional objective families only after the previous layers are stable
 
 ---
 
@@ -258,7 +260,7 @@ The immediate next steps (Chapter 2 / Phase 5 in `TODO.md`):
 - **Transaction costs, slippage, and market impact are not modeled in the MVP.** Real-world implementation would require these.
 - **The crypto market is highly volatile and has limited history.** Conclusions drawn from 2018–present may not generalize.
 - **Data sourced from Yahoo Finance** may contain errors, adjusted-price artifacts, or gaps. It is not institutional-grade data.
-- **This is a research baseline, not a final production system.** Robustness, costs, and advanced methods remain planned work.
+- **This remains a research codebase, not a production system.** Chapter 2 is closed, but advanced regime, inference, and execution modeling remain future work.
 
 ---
 

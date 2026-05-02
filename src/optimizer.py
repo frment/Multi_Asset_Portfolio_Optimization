@@ -56,8 +56,11 @@ def load_optimizer_config() -> dict[str, Any]:
 # Covariance estimation
 # ---------------------------------------------------------------------------
 
-def estimate_covariance(returns: pd.DataFrame) -> pd.DataFrame:
-    """Estimate the annualised sample covariance matrix from daily returns.
+def estimate_covariance(
+    returns: pd.DataFrame,
+    covariance_method: str = "sample",
+) -> pd.DataFrame:
+    """Estimate the annualised covariance matrix from daily returns.
 
     This is the first and simplest covariance estimator.  It divides by
     (n - 1) (the pandas / numpy default) to get an unbiased estimate, then
@@ -68,13 +71,42 @@ def estimate_covariance(returns: pd.DataFrame) -> pd.DataFrame:
     - EWMA covariance        : weight recent observations more heavily
     - Robust covariance      : reduce sensitivity to outliers
 
+    Supported methods:
+    - "sample": unbiased sample covariance (ddof=1)
+    - "ledoit_wolf": shrinkage covariance via sklearn Ledoit-Wolf
+
     Args:
         returns: DataFrame of daily simple returns, shape (T, N).
+        covariance_method: Covariance estimator to use.
 
     Returns:
         Annualised covariance matrix as a DataFrame, shape (N, N).
     """
-    cov_daily = returns.cov()          # sample covariance, unbiased (ddof=1)
+    method = str(covariance_method).lower().strip()
+
+    if method == "sample":
+        cov_daily = returns.cov()      # sample covariance, unbiased (ddof=1)
+    elif method == "ledoit_wolf":
+        try:
+            from sklearn.covariance import LedoitWolf
+        except ImportError as exc:
+            raise ImportError(
+                "covariance_method='ledoit_wolf' requires scikit-learn. "
+                "Install it with 'pip install scikit-learn'."
+            ) from exc
+        lw = LedoitWolf()
+        lw.fit(returns.values)
+        cov_daily = pd.DataFrame(
+            lw.covariance_,
+            index=returns.columns,
+            columns=returns.columns,
+        )
+    else:
+        raise ValueError(
+            "Unsupported covariance_method: "
+            f"{covariance_method}. Use 'sample' or 'ledoit_wolf'."
+        )
+
     return cov_daily * 252             # annualise: multiply by trading days/year
 
 
@@ -166,6 +198,7 @@ def validate_weights(
 def minimise_variance(
     returns: pd.DataFrame,
     config: dict[str, Any] | None = None,
+    covariance_method: str = "sample",
 ) -> pd.Series:
     """Find the minimum variance portfolio weights.
 
@@ -178,6 +211,8 @@ def minimise_variance(
     Args:
         returns: DataFrame of daily simple returns.  Columns are tickers.
         config : Optional pre-loaded config dict.  If None, loaded from YAML.
+        covariance_method: Covariance estimator to use ("sample" or
+            "ledoit_wolf").
 
     Returns:
         Series of optimal weights indexed by ticker.
@@ -199,7 +234,7 @@ def minimise_variance(
     returns_aligned = returns[tickers]
 
     # --- 2. Covariance matrix -------------------------------------------------
-    cov_df = estimate_covariance(returns_aligned)
+    cov_df = estimate_covariance(returns_aligned, covariance_method=covariance_method)
     cov_matrix = cov_df.values  # plain NumPy array for scipy
 
     n = len(tickers)

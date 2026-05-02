@@ -149,25 +149,40 @@ Walk-forward backtest now produces OOS daily return series and benchmark compari
 
 ---
 
-## Phase 5: Robustness Analysis
+## Phase 5: Robustness Analysis ✅ (Chapter 2 closed)
 
 **Goal:** Stress-test findings and assess sensitivity to methodological choices.
 
 ### Tasks
-- [ ] Sensitivity analysis: lookback window (126, 252, 504 days)
-- [ ] Sensitivity analysis: max crypto cap (10 %, 15 %, 20 %, 25 %)
-- [ ] Sensitivity analysis: rebalance frequency (weekly, monthly, quarterly)
-- [ ] Sub-period analysis (pre-COVID, COVID crash, post-COVID, 2022 bear market)
-- [ ] Bootstrap confidence intervals for Sharpe ratio differences
-- [ ] Add Ledoit-Wolf shrinkage covariance estimator as an alternative to sample covariance
-- [ ] Document findings in `notebooks/05_robustness.ipynb`
+- [x] Sensitivity analysis: lookback window (126, 252, 504 days)
+- [x] Sensitivity analysis: max crypto cap (0 %, 10 %, 20 %, 25 %)
+- [x] Sensitivity analysis: rebalance frequency (monthly, quarterly; weekly support left optional)
+- [x] Bootstrap confidence intervals for pre-registered Sharpe ratio differences
+- [x] Add Ledoit-Wolf shrinkage covariance estimator as an alternative to sample covariance
+- [x] Integrate a simple net-of-cost layer (0 / 10 / 25 / 50 bps on one-way turnover)
+- [x] Document findings in analysis notebooks (`notebooks/01_backtest_analysis.ipynb`, `notebooks/02_robustness_analysis.ipynb`)
 
 ### Definition of Done
-Results are shown to be (or not to be) robust across parameter choices and sub-periods. Key sensitivities are identified and documented. The covariance estimator is improved beyond naive sample covariance.
+Chapter 2 closes with a reproducible robustness workflow, cost-aware summary outputs, covariance-method comparison, a light confidence layer, and notebook-grade reporting with conservative claims.
 
 ---
 
-## Phase 6: Advanced Extensions (Future Work)
+## Phase 6: Chapter 3 (Next Methodological Block)
+
+**Goal:** Extend rigor without expanding claim scope beyond what Chapter 2 supports.
+
+### Priority Tasks
+- [ ] Regime/subperiod framework with explicit definitions and aligned comparisons
+- [ ] Expanded preregistered confirmatory layer with multiple-testing discipline
+- [ ] Asset-aware and convex implementation-cost modeling beyond flat bps
+- [ ] Risk-space concentration diagnostics (for example, marginal contribution to variance)
+
+### Definition of Done
+The project can distinguish descriptive ranking from confirmatory evidence across regimes, and implementation claims are supported by a more realistic cost model.
+
+---
+
+## Phase 7: Advanced Extensions (Future Work)
 
 **Goal:** Explore more sophisticated portfolio construction methods once the foundation is solid.
 

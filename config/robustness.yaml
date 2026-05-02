@@ -1,0 +1,49 @@
+# Chapter 2 robustness configuration (first-pass, one-factor-at-a-time)
+
+anchors:
+  baseline_ch1:
+    enabled: true
+    lookback_window_days: 252
+    max_total_crypto_weight: 0.20
+    rebalance_frequency: monthly
+
+  minvar_no_crypto_control:
+    enabled: true
+    lookback_window_days: 252
+    max_total_crypto_weight: 0.00
+    rebalance_frequency: monthly
+
+first_pass:
+  include_weekly_in_first_pass: false
+
+  lookback_values:
+    - 126
+    - 252
+    - 504
+
+  crypto_cap_values:
+    - 0.00
+    - 0.10
+    - 0.20
+    - 0.25
+
+  rebalance_values:
+    - monthly
+    - quarterly
+
+  covariance_methods:
+    - sample
+    - ledoit_wolf
+
+  include_no_crypto_anchor_in_covariance_family: true
+
+  cost_scenarios_bps:
+    - 0
+    - 10
+    - 25
+    - 50
+
+policy:
+  mode: one_factor_at_a_time
+  benchmark_policy: min_variance_only_benchmarks_deferred
+  common_sample_scope: family
