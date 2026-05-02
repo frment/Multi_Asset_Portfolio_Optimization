@@ -1,0 +1,15 @@
+# <type>(<scope>): <short summary in imperative mood>
+#
+# Types: feat, fix, docs, test, refactor, chore
+# Scopes: config, loader, preprocessing, metrics, benchmarks, optimizer, backtest, notebooks, todo, repo
+#
+# Why:
+# -
+#
+# What:
+# -
+# -
+#
+# Validation:
+# - command(s) run:
+# - result:
