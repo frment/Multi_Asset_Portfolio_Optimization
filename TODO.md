@@ -21,9 +21,9 @@ Status legend: `[x]` = done · `[ ]` = pending
 - [x] Write `src/utils.py` — basic utility helpers
 - [x] Create `requirements.txt` with essential dependencies
 - [x] Create `.gitignore`
-- [ ] Initialize git repository
-- [ ] Create and document virtual environment setup
-- [ ] Run `pytest` with a trivial test to confirm the test harness works
+- [x] Initialize git repository
+- [x] Create and document virtual environment setup
+- [x] Run `pytest` with a trivial test to confirm the test harness works
 
 ### Definition of Done
 The repo can be cloned, the environment set up in under 5 minutes, and all scaffold files are in place. `pytest` runs successfully (even if there are no real tests yet).
@@ -118,32 +118,34 @@ Both scripts run end-to-end with exit code 0. Reproducible raw and processed dat
 
 ---
 
-## Phase 4: Rolling Walk-Forward Backtest ← **NEXT**
+## Phase 4: Rolling Walk-Forward Backtest ✅ (initial OOS validation)
 
 **Goal:** Validate strategies out-of-sample using a rolling window methodology.
 
 This is the step that turns a static optimizer result into a real research finding. The key discipline is strict temporal separation: at each rebalance date, only information available *up to that date* is used.
 
 ### Tasks
-- [ ] Create `src/backtest.py`:
+- [x] Create `src/backtest.py`:
   - Rolling walk-forward engine: at each monthly rebalance date, fit on the trailing lookback window (252 days by default from config), optimise, hold forward until next rebalance
   - Return a time-series of daily portfolio returns and a history of weights
-  - Cover all strategies: Equal Weight, 60/40, Fixed Crypto, Minimum Variance
-  - Track turnover at each rebalance
-  - Explicit look-ahead bias check (assert weights at `t` use only data ≤ `t`)
-- [ ] Create `scripts/run_backtest.py` — entry point to run all strategies and save results
-- [ ] Save outputs:
-  - `data/processed/backtest_returns.csv` — daily returns per strategy
-  - `data/processed/backtest_weights.csv` — weight history per strategy
-- [ ] Create `notebooks/04_backtest.ipynb`:
+  - Cover strategy comparison in the pipeline: Minimum Variance vs Equal Weight, 60/40, and Fixed Small Crypto
+  - [x] Track turnover at each rebalance (pre-trade drifted one-way, saved to `turnover_history.csv`)
+  - [x] Explicit look-ahead bias check (validated in run script output)
+- [x] Create `scripts/run_backtest.py` — entry point to run all strategies and save results
+- [x] Save outputs:
+  - `data/processed/portfolio_returns.csv` — daily returns per strategy
+  - `data/processed/weights_history.csv` — monthly weight history for Minimum Variance
+  - `data/processed/backtest_summary.csv` — OOS summary metrics table
+  - `data/processed/turnover_history.csv` — one-way turnover at each rebalance (pre-trade drifted)
+- [x] Create `notebooks/01_backtest_analysis.ipynb`:
   - Cumulative return curves for all strategies
-  - Rolling Sharpe ratio and drawdown over time
-  - Weight evolution over time (stacked area chart)
+  - Drawdown analysis over time
+  - Weight evolution over time
   - Summary performance table (OOS metrics)
-- [ ] Add tests for the backtest engine (rebalance dates correct, constraints hold at every step, no future data leakage)
+- [x] Add tests for the backtest engine (rebalance dates correct, constraints hold at every step, no future data leakage, turnover correctness)
 
 ### Definition of Done
-Walk-forward backtest produces OOS daily return series for all strategies. Look-ahead bias is explicitly verified. A summary table compares all strategies on the same OOS period. Turnover is reported.
+Walk-forward backtest now produces OOS daily return series and benchmark comparisons on the same period. Look-ahead bias is explicitly verified and results are documented in the analysis notebook. Turnover is tracked at every rebalance (pre-trade drifted, one-way) and saved to `turnover_history.csv`. Backtest engine has automated tests covering date generation, temporal separation, constraint checking, and turnover correctness. Chapter 1 is frozen as a reproducible baseline with descriptive OOS evidence and gross implementability.
 
 ---
 

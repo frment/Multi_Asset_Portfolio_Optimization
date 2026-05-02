@@ -42,25 +42,28 @@ The intent is that a recruiter, portfolio manager, or collaborator can open this
 
 ## Current Scope
 
-**This repository is currently in MVP foundation stage.**
+**Chapter 1 is complete: data pipeline, benchmarks, first optimizer, first OOS walk-forward validation, turnover reporting, backtest test suite, and initial research narrative are now in place as a reproducible baseline.**
 
 What exists today:
 
-- A clean, modular project structure
-- Configuration files defining the asset universe, constraints, and settings
-- Core scaffold code (`src/`) with config loaders and basic utilities
-- A detailed roadmap (`TODO.md`) with phased implementation plans
-- This README documenting motivation, design, and scope
+- End-to-end data ingestion and preprocessing pipeline
+- Risk metrics and benchmark portfolio framework
+- Constrained Minimum Variance optimizer (config-driven constraints)
+- Rolling walk-forward out-of-sample backtest workflow
+- **Turnover reporting**: pre-trade drifted one-way turnover at every rebalance, saved to `turnover_history.csv`
+- **Automated test suite** for the backtest engine (rebalance dates, temporal separation, constraint checking, turnover correctness)
+- Reproducible scripts to run each stage of the pipeline
+- Analysis notebook for baseline OOS evidence (equity curves, drawdowns, weights, quantified interpretation, crypto activation diagnostics)
+- Configuration-first architecture with modular, testable functions
 
 What does **not** exist yet:
 
-- Data ingestion pipeline
-- Exploratory data analysis
-- Portfolio optimizers
-- Backtesting engine
-- Results, charts, or performance tables
+- Robustness/sensitivity studies (lookback, caps, rebalance frequency)
+- Alternative covariance estimators (e.g., Ledoit-Wolf)
+- Transaction cost net-of-cost evaluation
+- Unit tests for preprocessing and metrics modules
 
-This is an honest starting point. The foundation is deliberately kept simple so each subsequent layer can be built, tested, and understood incrementally.
+The project has moved beyond scaffold stage and now has a reproducible first research baseline ready for stress testing in Chapter 2.
 
 ---
 
@@ -78,13 +81,12 @@ The objective is not to claim optimality early. It is to establish a reliable ba
 
 ## Immediate Next Build
 
-The next implementation targets are:
+Chapter 2 priorities:
 
-1. Market data ingestion
-2. Clean processed return series
-3. Benchmark portfolios
-4. Constrained Minimum Variance optimizer
-5. First rolling walk-forward backtest
+1. Robustness and sensitivity analysis (lookback windows, crypto cap, rebalance frequency)
+2. Turnover measurement and transaction cost-aware evaluation
+3. Improved covariance estimation (Ledoit-Wolf shrinkage)
+4. Sub-period/regime analysis and statistical confidence checks
 
 ---
 
@@ -144,14 +146,17 @@ Any proposed strategy must demonstrably outperform these baselines on risk-adjus
 
 The project is designed to evolve through clear phases:
 
-### Near-term (MVP development)
+### Near-term (completed in Chapter 1)
 - Data ingestion from Yahoo Finance
-- Return computation and basic EDA
+- Return computation and cleaned datasets
 - Implementation of benchmark portfolios
 - Minimum Variance optimization with constraints
 - Rolling walk-forward backtest framework
+- Turnover reporting (pre-trade drifted one-way turnover at every rebalance)
+- Automated backtest engine test suite
+- Initial analysis notebook for OOS performance interpretation
 
-### Medium-term (robustness and depth)
+### Medium-term (Chapter 2: robustness and depth)
 - Equal Risk Contribution (ERC / Risk Parity)
 - Maximum Diversification portfolio
 - CVaR / Expected Shortfall optimization
@@ -173,54 +178,64 @@ These are documented for transparency. They are **not yet implemented**.
 
 ```
 ./
-├── README.md                 # This file
-├── TODO.md                   # Phased implementation roadmap
-├── requirements.txt          # Python dependencies
-├── .gitignore                # Git ignore rules
+├── README.md
+├── TODO.md
+├── requirements.txt
+├── .gitignore
 ├── config/
-│   ├── assets.yaml           # Asset universe and categories
-│   └── settings.yaml         # Portfolio constraints and parameters
+│   ├── assets.yaml
+│   └── settings.yaml
 ├── src/
-│   ├── __init__.py           # Package marker
-│   ├── config.py             # Config loading helpers
-│   └── utils.py              # General-purpose utilities
+│   ├── __init__.py
+│   ├── config.py
+│   ├── utils.py
+│   ├── data_loader.py
+│   ├── preprocessing.py
+│   ├── metrics.py
+│   ├── benchmarks.py
+│   ├── optimizer.py
+│   └── backtest.py
+├── scripts/
+│   ├── run_download.py
+│   ├── run_build_dataset.py
+│   ├── run_benchmarks.py
+│   ├── run_optimizer.py
+│   └── run_backtest.py
 ├── data/
-│   ├── raw/                  # Market data snapshots (created, initially empty)
-│   └── processed/            # Cleaned prices/returns (created, initially empty)
-├── notebooks/                # Research notebooks (created, initially empty)
-├── scripts/                  # Reproducible run scripts (created, initially empty)
-└── tests/                    # Unit/integration tests (created, initially empty)
+│   ├── raw/
+│   └── processed/
+├── notebooks/
+│   └── 01_backtest_analysis.ipynb
+└── tests/
 ```
 
-**Design note:** Business logic lives in `src/`. Scripts orchestrate repeatable tasks. Notebooks are for exploration and validation only. Configuration is externalized to YAML files, not hardcoded.
+**Design note:** Business logic lives in `src/`. Scripts orchestrate repeatable tasks. Notebooks are for analysis and narrative interpretation. Configuration is externalized to YAML files, not hardcoded.
 
 ---
 
-## What Is Present in This First Layer
+## What Is Present in Chapter 1
 
-- [x] Project README with motivation, scope, and roadmap
-- [x] `TODO.md` with concrete phased tasks
-- [x] `config/assets.yaml` — asset universe definition
-- [x] `config/settings.yaml` — portfolio parameters and constraints
-- [x] `src/config.py` — YAML config loader
-- [x] `src/utils.py` — basic utility helpers
-- [x] `requirements.txt` — essential Python dependencies
-- [x] `.gitignore` — standard Python ignores
-- [x] `data/raw/` and `data/processed/` directories (empty, for upcoming ingestion)
-- [x] `notebooks/`, `scripts/`, and `tests/` directories (empty scaffolding)
+- [x] Data download pipeline and raw market snapshot persistence
+- [x] Price cleaning and return engineering (simple and log)
+- [x] Performance metrics module (return, volatility, Sharpe, drawdown, Calmar)
+- [x] Benchmark portfolio engine and summary outputs
+- [x] Constrained Minimum Variance optimizer
+- [x] Rolling OOS walk-forward validation for Minimum Variance
+- [x] Benchmark comparison on aligned OOS period
+- [x] Saved outputs for returns, weights history, and summary metrics
+- [x] Analysis notebook documenting interpretation and limitations
+- [x] Chapter 1 frozen as reproducible baseline + descriptive OOS evidence + gross implementability
 
 ---
 
 ## What Will Be Built Next
 
-The immediate next steps (Phase 1 in `TODO.md`):
+The immediate next steps (Chapter 2 / Phase 5 in `TODO.md`):
 
-1. Set up a virtual environment and install dependencies
-2. Write `src/data_loader.py` to download price data via `yfinance`
-3. Write `src/preprocessing.py` to clean prices and compute return series
-4. Save processed data to `data/processed/`
-5. Add reproducible scripts: `scripts/run_download.py` and `scripts/run_build_dataset.py`
-6. Use a notebook later for validation and visualization
+1. Sensitivity analysis for lookback, caps, and rebalance schedule
+2. Turnover and transaction cost impact analysis
+3. Alternative covariance estimator (Ledoit-Wolf) integration
+4. Sub-period robustness checks and statistical confidence analysis
 
 ---
 
@@ -243,7 +258,7 @@ The immediate next steps (Phase 1 in `TODO.md`):
 - **Transaction costs, slippage, and market impact are not modeled in the MVP.** Real-world implementation would require these.
 - **The crypto market is highly volatile and has limited history.** Conclusions drawn from 2018–present may not generalize.
 - **Data sourced from Yahoo Finance** may contain errors, adjusted-price artifacts, or gaps. It is not institutional-grade data.
-- **This is an MVP foundation.** Many planned features are not yet built. The roadmap reflects intent, not current capability.
+- **This is a research baseline, not a final production system.** Robustness, costs, and advanced methods remain planned work.
 
 ---
 
