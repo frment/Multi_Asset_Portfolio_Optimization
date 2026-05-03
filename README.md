@@ -1,53 +1,61 @@
-````markdown
-# Crypto-Enhanced Multi-Asset Portfolio Optimization
+# Multi-Asset Portfolio Optimization with Crypto Sleeve
 
-**A Quantitative Risk-Based Approach**
+Quantitative research project focused on risk-based portfolio construction, realistic constraints, out-of-sample validation, and conservative interpretation of crypto allocation.
 
----
+## Research Question
 
-## Project Motivation
+Can a bounded allocation to BTC and ETH improve a traditional multi-asset portfolio after applying realistic constraints, turnover and cost frictions, robustness checks, tail-risk objectives, regime diagnostics, and a conservative supervised risk overlay?
 
-The growing institutional interest in digital assets raises a practical portfolio construction question:
+## Current Project Status
 
-> Can a small, disciplined allocation to cryptocurrencies improve the risk-adjusted profile of a traditional multi-asset portfolio once realistic constraints, turnover, costs, robustness checks and tail-risk objectives are imposed?
+The pipeline is implemented through Chapter 5 and structured as reproducible research:
 
-This project approaches that question from a **quantitative risk management and portfolio construction perspective**, not from a crypto-promotional viewpoint.
+1. Chapter 1: baseline walk-forward out-of-sample backtest.
+2. Chapter 2: robustness, costs, and statistical confidence.
+3. Chapter 3: tail-risk extension with historical CVaR optimization.
+4. Chapter 4: regime diagnostics (in-sample attribution, not forecasting).
+5. Chapter 5: supervised risk forecasting and conservative overlay evaluation.
 
-The emphasis is on:
+Main research notebooks:
 
-- **Risk-based portfolio construction**, not return chasing
-- **Realistic constraints**: long-only, position caps, crypto sleeve caps
-- **Strong benchmarks**: equal weight, 60/40 proxy, fixed-crypto baselines and no-crypto controls
-- **Walk-forward out-of-sample validation**
-- **Robustness analysis** across lookbacks, crypto caps, rebalance frequencies, covariance estimators and costs
-- **Tail-risk analysis** through historical CVaR / Expected Shortfall optimization
-- **Transparent limitations and reproducibility**
+1. notebooks/01_backtest_analysis.ipynb
+2. notebooks/02_robustness_analysis.ipynb
+3. notebooks/03_tail_risk_cvar_analysis.ipynb
+4. notebooks/04_regime_analysis.ipynb
+5. notebooks/05_supervised_risk_overlay.ipynb
+6. notebooks/06_research_synthesis_and_publication_report.ipynb
 
-The goal is to produce a research-grade portfolio study, not a promotional argument for crypto.
+## Methodological Baseline
 
----
+Current baseline conventions enforced in code and tests:
 
-## Methodological Audit Fixes (v0.4.1)
+1. Calendar policy: business-day aligned.
+2. Holding return engine: drifted buy-and-hold.
+3. Rebalance policy: first available date each month on aligned index.
+4. Annualization factor read from dataset metadata (baseline 252).
+5. Regime reproducibility hardened with explicit dependency behavior.
 
-This repository includes an explicit methodological hardening pass before Chapter 5.
+This avoids common distortions from mixing 24/7 crypto with weekday ETF calendars using naive calendar-day assumptions.
 
-Baseline methodology now enforced:
+## Asset Universe
 
-- Calendar policy: `business_day_aligned`.
-- Holding return method: `drifted_buy_and_hold`.
-- Rebalance schedule: first available date in each month of the aligned index.
-- Annualization: read from dataset metadata (baseline `252`).
-- Regime reproducibility: HMM primary with explicit failure if requested and unavailable when fallback is disabled.
+1. BTC-USD
+2. ETH-USD
+3. SPY
+4. QQQ
+5. GLD
+6. TLT
 
-Important warning:
+## Portfolio Constraints
 
-Previous calendar-day processing is not the baseline because mixing 24/7 crypto and weekday ETFs can create artificial zero returns for TradFi assets and inconsistent annualization assumptions.
+Baseline constraints (config-driven):
 
-Sensitivity mode is still available (`calendar_day` + `constant_target_weights`) for controlled before/after comparisons.
+1. Long-only.
+2. Weights sum to 1.
+3. Maximum per-asset weight: 35%.
+4. Maximum combined crypto sleeve weight: 20%.
 
----
-
-## Reproducible Execution
+## Quick Start
 
 Install dependencies:
 
@@ -55,468 +63,122 @@ Install dependencies:
 python -m pip install -r requirements.txt
 ```
 
-Run pipeline (Chapter 1-4):
+Build processed dataset:
+
+```bash
+python scripts/run_build_dataset.py
+```
+
+Run complete Chapter 1-4 pipeline:
 
 ```bash
 python scripts/run_all_chapters.py
 ```
 
-Run full test suite:
+Run complete Chapter 1-5 pipeline:
 
 ```bash
-OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 python -m pytest -q
+python scripts/run_all_chapters.py --include-chapter5
 ```
 
-Windows PowerShell equivalent:
+Run Chapter 5 only:
+
+```bash
+python scripts/run_chapter5.py
+```
+
+Run test suite:
+
+```bash
+python -m pytest -q
+```
+
+Windows PowerShell test command with thread caps:
 
 ```powershell
 $env:OMP_NUM_THREADS='1'; $env:OPENBLAS_NUM_THREADS='1'; $env:MKL_NUM_THREADS='1'; python -m pytest -q
 ```
 
-Generate before/after audit comparison report:
-
-```bash
-python scripts/run_audit_fix_comparison.py
-```
-
-Main outputs:
-
-- `data/processed/dataset_metadata.json`
-- `data/processed/backtest_summary.csv`
-- `data/processed/benchmark_summary.csv`
-- `data/processed/regime_analysis/regime_model_metadata.json`
-- `outputs/audit_fix_comparison.csv`
-- `outputs/audit_fix_comparison.md`
-
----
-
-## Research Question
-
-> Does a bounded and risk-disciplined allocation to BTC and ETH improve the risk-adjusted performance of a traditional multi-asset portfolio when we impose realistic constraints, compare against strong benchmarks, account for turnover/costs, and validate out-of-sample?
-
-The project treats this as a falsifiable research question. A positive result must survive robustness checks, implementation frictions and downside-risk analysis. A negative or fragile result is also informative.
-
----
-
-## Professional Framing
-
-This repository is structured as a **quantitative portfolio research project**. It prioritizes:
-
-- Out-of-sample portfolio evaluation
-- Robustness and sensitivity analysis
-- Tail-risk and drawdown-aware evaluation
-- Turnover and transaction-cost awareness
-- Conservative interpretation of crypto exposure
-- Modular, testable, reproducible code
-- Notebook-based research reporting in mini-paper style
-
-The intended audience is a quant researcher, portfolio manager, risk specialist, recruiter or collaborator who wants to understand both the research design and the implementation quality.
-
----
-
-## Current Status
-
-The project has moved beyond MVP scaffold stage.
-
-### Chapter 1 — Baseline OOS Portfolio Construction
-
-Completed.
-
-Implemented:
-
-- Data ingestion and preprocessing
-- Daily return construction
-- Benchmark portfolios
-- Constrained Minimum Variance optimizer
-- Rolling walk-forward out-of-sample backtest
-- Turnover reporting
-- Baseline performance analysis
-- Crypto sleeve diagnostics
-- Notebook mini-paper:
-
-```text
-notebooks/01_backtest_analysis.ipynb
-````
-
-### Chapter 2 — Robustness, Costs and Statistical Confidence
-
-Completed / mature.
-
-Implemented:
-
-* One-factor-at-a-time robustness analysis
-* No-crypto control
-* Lookback sensitivity: 126 / 252 / 504 days
-* Crypto cap sensitivity: 0% / 10% / 20% / 25%
-* Rebalance frequency sensitivity: monthly / quarterly
-* Gross vs net simple transaction-cost layer
-* Cost scenarios: 0 / 10 / 25 / 50 bps
-* Sample covariance vs Ledoit-Wolf shrinkage
-* Bootstrap / confidence layer for pre-registered comparisons
-* Common-family sample logic
-* Notebook mini-paper:
-
-```text
-notebooks/02_robustness_analysis.ipynb
-```
-
-### Chapter 3 — Tail Risk and Alternative Risk Objectives
-
-Implemented.
-
-Implemented:
-
-* Generic rolling backtest engine refactor
-* Backward-compatible `run_min_variance_backtest` wrapper
-* Historical minimum-CVaR / Expected Shortfall optimizer
-* MinVar vs CVaR comparison under identical OOS protocol
-* No-crypto controls for both objective families
-* Historical stress testing
-* Gross vs net tail-risk outputs
-* Tail-risk metrics:
-
-  * Expected Shortfall
-  * Return / ES
-  * Max Drawdown
-  * Calmar
-* Crypto sleeve usage diagnostics
-* Notebook mini-paper:
-
-```text
-notebooks/03_tail_risk_cvar_analysis.ipynb
-```
-
-Key Chapter 3 sanity checks:
-
-* Baseline MinVar outputs are exactly preserved after the generic backtest refactor.
-* MinVar and CVaR are compared on the same OOS window:
-
-  * 2018-10-01 to 2026-05-02
-  * 2771 observations
-* Stress outputs separate `gross` and `net` scopes.
-* Crypto exposure remains mostly intermittent rather than structural:
-
-  * MinVar uses crypto sparingly.
-  * CVaR uses crypto somewhat more, but not as a permanent allocation.
-
----
-
-## Current Research Interpretation
-
-The project’s conclusions are deliberately conservative.
-
-At the current stage, the evidence is best read as follows:
-
-* The constrained Minimum Variance baseline is reproducible and implementable.
-* The role of crypto is not a simple “always allocate” story.
-* Crypto exposure appears more episodic than structural under risk-based optimization.
-* Robustness checks matter: results are sensitive to assumptions such as crypto cap, lookback, rebalance frequency and costs.
-* Ledoit-Wolf shrinkage is primarily relevant as a stability / regularization tool, not necessarily as a pure performance enhancer.
-* CVaR provides a useful alternative risk objective, but must be evaluated against return, drawdown, turnover and net-of-cost trade-offs.
-* Historical stress windows are diagnostic, not universal proof.
-
-The project does not claim that crypto is always beneficial. It asks when, how much, and under what constraints crypto survives as a portfolio allocation.
-
----
-
-## Current Build Focus
-
-### Chapter 4 — Regime Analysis
-
-Completed.
-
-Implemented:
-
-* Regime feature engineering from existing daily returns
-* Candidate detection stack (KMeans / HMM) with HMM-2 as primary diagnostic model
-* Regime persistence and transition matrix analysis
-* Regime-conditional gross/net performance attribution
-* MinVar vs CVaR comparison by regime
-* Crypto sleeve diagnostics by regime
-* Stress windows mapped to detected regimes
-* Notebook mini-paper:
-
-```text
-notebooks/04_regime_analysis.ipynb
-```
-
-Methodological caveat:
-
-* Chapter 4 is diagnostic and in-sample attribution.
-* It is not a forecasting, signaling or dynamic-allocation chapter.
-
-### Immediate Next Build
-
-### Chapter 5 — Supervised Risk Forecasting / Overlay
-
-Implemented (initial conservative release).
-
-Objective:
-
-> Test whether risk forecasting signals provide robust out-of-sample value and, only if they do, evaluate a conservative overlay versus static MinVar/CVaR references.
-
-Implemented scope:
-
-* Supervised risk targets defined ex-ante
-* Walk-forward validation without look-ahead
-* Calibration/stability first, Sharpe second
-* Conservative overlay rules (if signal quality justifies it)
-
-Main Chapter 5 outputs:
-
-* `data/processed/supervised_features.csv`
-* `data/processed/supervised_targets.csv`
-* `outputs/chapter5/model_scores.csv`
-* `outputs/chapter5/overlay_backtest_summary.csv`
-* `outputs/chapter5/overlay_daily_returns.csv`
-* `outputs/chapter5/overlay_weights.csv`
-* `outputs/chapter5/overlay_decisions.csv`
-* `outputs/chapter5/chapter5_metadata.json`
-
-Not in scope yet:
-
-* Aggressive tactical timing
-* Regime-trading claims
-* Unconstrained dynamic crypto caps
-
----
-
-## Asset Universe
-
-| Ticker  | Role                  | Rationale                                           |
-| ------- | --------------------- | --------------------------------------------------- |
-| BTC-USD | Crypto sleeve         | Largest cryptocurrency by market cap                |
-| ETH-USD | Crypto sleeve         | Second-largest crypto asset; different risk profile |
-| SPY     | Equity risk           | Broad US equity proxy                               |
-| QQQ     | Growth equity risk    | US tech-heavy equity exposure                       |
-| GLD     | Defensive diversifier | Gold ETF; defensive / inflation-sensitive exposure  |
-| TLT     | Duration risk         | Long-duration US Treasury bond proxy                |
-
-This is a deliberately compact multi-asset universe covering:
-
-* crypto
-* equities
-* growth equities
-* gold
-* duration / rates
-
-The compact universe keeps the research interpretable while still allowing meaningful cross-asset portfolio construction.
-
----
-
-## Core Portfolio Assumptions
-
-| Parameter               | Value            |
-| ----------------------- | ---------------- |
-| Data frequency          | Daily            |
-| Start date              | 2018-01-01       |
-| Baseline rebalance      | Monthly          |
-| Baseline lookback       | 252 trading days |
-| Portfolio type          | Long-only        |
-| Weight constraint       | Sum to 1         |
-| Max weight per asset    | 35%              |
-| Max total crypto weight | 20%              |
-
-These constraints are intentionally conservative. They are designed to avoid unrealistic concentration and to keep crypto exposure bounded.
-
----
-
-## Benchmark and Strategy Set
-
-The project evaluates several portfolio families and controls.
-
-### Benchmarks
-
-1. **Equal Weight**
-
-   * Allocates equally across all assets.
-   * Simple but hard to beat out-of-sample.
-
-2. **60/40 Proxy**
-
-   * 60% SPY / 40% TLT.
-   * Traditional institutional reference point.
-
-3. **Fixed Small-Crypto**
-
-   * Hand-specified small allocation to BTC and ETH.
-   * Useful to separate “crypto exposure” from optimization.
-
-### Optimization-Based Strategies
-
-1. **Minimum Variance**
-
-   * First risk-based optimizer.
-   * Avoids explicit expected-return forecasts.
-
-2. **Minimum Variance, No-Crypto Control**
-
-   * Same optimizer with crypto cap set to zero.
-   * Separates optimizer effect from crypto availability.
-
-3. **Historical Minimum-CVaR**
-
-   * Tail-risk objective based on empirical historical scenarios.
-   * Focused on Expected Shortfall rather than variance.
-
-4. **Historical Minimum-CVaR, No-Crypto Control**
-
-   * Same CVaR objective without crypto exposure.
-   * Used to isolate the crypto sleeve effect under a tail-risk objective.
-
----
-
-## Methodology Roadmap
-
-### Chapter 1 — Baseline
-
-Completed.
-
-* Data ingestion
-* Return construction
-* Benchmarks
-* Constrained Minimum Variance
-* Rolling OOS backtest
-* Turnover
-* Baseline notebook
-
-### Chapter 2 — Robustness and Implementability
-
-Completed.
-
-* Robustness one-factor-at-a-time
-* No-crypto control
-* Lookback sensitivity
-* Crypto cap sensitivity
-* Rebalance frequency sensitivity
-* Gross vs net cost layer
-* Ledoit-Wolf covariance comparison
-* Bootstrap confidence layer
-* Robustness notebook
-
-### Chapter 3 — Tail Risk and Alternative Objectives
-
-Implemented.
-
-* Historical CVaR / Expected Shortfall optimization
-* MinVar vs CVaR comparison
-* No-crypto controls
-* Historical stress testing
-* Tail-risk metrics
-* Crypto sleeve usage under CVaR
-* Tail-risk notebook
-
-### Chapter 4 — Regime Analysis
-
-Completed.
-
-* Regime features
-* KMeans / HMM regime candidates
-* Regime persistence and transition matrix
-* Conditional performance (gross and net)
-* MinVar vs CVaR by regime
-* Crypto sleeve by regime
-* Stress windows mapped to regimes
-* Regime notebook
-
-### Chapter 5 — Supervised Risk Forecasting / Overlay
-
-Implemented (conservative baseline).
-
-* Forward risk targets (volatility, drawdown, stress events)
-* Leakage-safe rolling feature panel
-* Walk-forward validation with embargo
-* Conservative supervised models vs naive baselines
-* Dynamic crypto-cap and defensive overlay backtests
-* Chapter 5 notebook and outputs
-
-Methodological note:
-
-* ML is used for risk forecasting, not return prediction.
-* If ML does not outperform naive baselines in walk-forward validation,
-  overlay selection falls back to naive/logistic models.
-
-### Premium / Final Extensions
-
-Future.
-
-Potential scope:
-
-* Black-Litterman
-* Resampling
-* Dashboard
-* Richer cost/slippage model
-* Expanded asset universe
-
----
+## Core Scripts
+
+End-to-end and chapter runners in scripts/:
+
+1. run_all_chapters.py
+2. run_build_dataset.py
+3. run_benchmarks.py
+4. run_optimizer.py
+5. run_backtest.py
+6. run_robustness.py
+7. run_statistical_confidence.py
+8. run_tail_risk.py
+9. run_regime_analysis.py
+10. run_chapter5.py
+11. run_audit_fix_comparison.py
+
+Chapter 5 sub-runners:
+
+1. run_supervised_targets.py
+2. run_supervised_features.py
+3. run_supervised_models.py
+4. run_risk_overlay.py
+
+## Main Outputs
+
+Examples of key artifacts generated by the pipeline:
+
+1. data/processed/dataset_metadata.json
+2. data/processed/backtest_summary.csv
+3. data/processed/benchmark_summary.csv
+4. data/processed/turnover_history.csv
+5. data/processed/regime_analysis/regime_model_metadata.json
+6. outputs/audit_fix_comparison.csv
+7. outputs/audit_fix_comparison.md
+8. outputs/chapter5/model_scores.csv
+9. outputs/chapter5/overlay_backtest_summary.csv
+10. outputs/chapter5/overlay_daily_returns.csv
+11. outputs/chapter5/overlay_weights.csv
+12. outputs/chapter5/overlay_decisions.csv
+13. outputs/chapter5/chapter5_metadata.json
 
 ## Repository Structure
 
-Current high-level structure:
-
 ```text
-./
-├── README.md
-├── TODO.md
-├── requirements.txt
-├── .gitignore
+.
 ├── config/
 │   ├── assets.yaml
-│   ├── settings.yaml
+│   ├── regime_analysis.yaml
 │   ├── robustness.yaml
-│   ├── tail_risk.yaml
-│   └── regime_analysis.yaml
-├── src/
-│   ├── __init__.py
-│   ├── config.py
-│   ├── utils.py
-│   ├── data_loader.py
-│   ├── preprocessing.py
-│   ├── metrics.py
-│   ├── benchmarks.py
-│   ├── optimizer.py
-│   ├── backtest.py
-│   ├── costs.py
-│   ├── bootstrap.py
-│   ├── covariance.py
-│   ├── robustness.py
-│   ├── cvar_optimizer.py
-│   ├── stress.py
-│   ├── regime_features.py
-│   ├── regime_detection.py
-│   └── regime_evaluation.py
-├── scripts/
-│   ├── run_download.py
-│   ├── run_build_dataset.py
-│   ├── run_benchmarks.py
-│   ├── run_optimizer.py
-│   ├── run_backtest.py
-│   ├── run_robustness.py
-│   ├── run_statistical_confidence.py
-│   ├── run_tail_risk.py
-│   └── run_regime_analysis.py
+│   ├── settings.yaml
+│   ├── supervised_risk_overlay.yaml
+│   └── tail_risk.yaml
 ├── data/
 │   ├── raw/
 │   └── processed/
-│       ├── robustness/
-│       ├── tail_risk/
-│       └── regime_analysis/
+├── docs/
 ├── notebooks/
 │   ├── 01_backtest_analysis.ipynb
 │   ├── 02_robustness_analysis.ipynb
 │   ├── 03_tail_risk_cvar_analysis.ipynb
-│   └── 04_regime_analysis.ipynb
+│   ├── 04_regime_analysis.ipynb
+│   ├── 05_supervised_risk_overlay.ipynb
+│   ├── 06_research_synthesis_and_publication_report.ipynb
+│   └── html/
+├── outputs/
+├── scripts/
+├── src/
 └── tests/
-    ├── test_backtest.py
-    ├── test_bootstrap.py
-    ├── test_cvar_optimizer.py
-   ├── test_optimizer_covariance.py
-    ├── test_robustness.py
-    ├── test_stress.py
-   ├── test_tail_risk_metrics.py
-   ├── test_regime_features.py
-   ├── test_regime_detection.py
-   └── test_regime_evaluation.py
+```
+
+## Reproducibility and Scope Notes
+
+1. The project prioritizes reproducibility, modularity, and test coverage.
+2. Chapter 4 outputs are diagnostic and attribution-oriented, not a trading signal by themselves.
+3. Chapter 5 models forecast risk characteristics; they are not directional return predictors.
+4. Conclusions are intentionally conservative and stress-tested under multiple assumptions.
+
+## License and Contribution
+
+See CONTRIBUTING.md for workflow and contribution guidance.
 ```
 
 Design note:
