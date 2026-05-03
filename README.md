@@ -249,18 +249,29 @@ Methodological caveat:
 
 ### Chapter 5 — Supervised Risk Forecasting / Overlay
 
-Next.
+Implemented (initial conservative release).
 
 Objective:
 
 > Test whether risk forecasting signals provide robust out-of-sample value and, only if they do, evaluate a conservative overlay versus static MinVar/CVaR references.
 
-Initial scope:
+Implemented scope:
 
 * Supervised risk targets defined ex-ante
 * Walk-forward validation without look-ahead
 * Calibration/stability first, Sharpe second
 * Conservative overlay rules (if signal quality justifies it)
+
+Main Chapter 5 outputs:
+
+* `data/processed/supervised_features.csv`
+* `data/processed/supervised_targets.csv`
+* `outputs/chapter5/model_scores.csv`
+* `outputs/chapter5/overlay_backtest_summary.csv`
+* `outputs/chapter5/overlay_daily_returns.csv`
+* `outputs/chapter5/overlay_weights.csv`
+* `outputs/chapter5/overlay_decisions.csv`
+* `outputs/chapter5/chapter5_metadata.json`
 
 Not in scope yet:
 
@@ -410,16 +421,20 @@ Completed.
 
 ### Chapter 5 — Supervised Risk Forecasting / Overlay
 
-Future.
+Implemented (conservative baseline).
 
-Potential scope:
+* Forward risk targets (volatility, drawdown, stress events)
+* Leakage-safe rolling feature panel
+* Walk-forward validation with embargo
+* Conservative supervised models vs naive baselines
+* Dynamic crypto-cap and defensive overlay backtests
+* Chapter 5 notebook and outputs
 
-* Volatility forecasting
-* Crash probability
-* Risk-aware overlay
-* Dynamic de-risking rules
+Methodological note:
 
-Not implemented yet.
+* ML is used for risk forecasting, not return prediction.
+* If ML does not outperform naive baselines in walk-forward validation,
+  overlay selection falls back to naive/logistic models.
 
 ### Premium / Final Extensions
 

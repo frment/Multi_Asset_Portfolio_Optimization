@@ -26,6 +26,29 @@ Chapter 1-4 outputs are reproducible under a single explicit methodology and Cha
 
 ---
 
+## Current Phase: Chapter 5 Supervised Risk Overlay (v0.5.0) 🚧
+
+Goal: implement a leakage-safe supervised risk forecasting layer and test economic overlay value OOS net of costs.
+
+### Tasks
+- [x] Add Chapter 5 config (`config/supervised_risk_overlay.yaml`)
+- [x] Implement supervised targets (`src/supervised_targets.py`)
+- [x] Implement leakage-safe supervised features (`src/supervised_features.py`)
+- [x] Implement walk-forward validation with embargo (`src/supervised_validation.py`)
+- [x] Implement conservative supervised model wrappers (`src/supervised_models.py`)
+- [x] Implement model evaluation and calibration outputs (`src/model_evaluation.py`)
+- [x] Implement dynamic crypto-cap overlay decision layer (`src/risk_overlay.py`)
+- [x] Implement overlay backtest on drifted holdings (`src/overlay_backtest.py`)
+- [x] Add Chapter 5 scripts and orchestration (`scripts/run_chapter5.py` + dedicated runners)
+- [x] Add Chapter 5 notebook (`notebooks/05_supervised_risk_overlay.ipynb`)
+- [x] Add Chapter 5 tests (targets/features/validation/models/overlay/pipeline smoke)
+- [ ] Execute full end-to-end Chapter 5 run on project data and freeze final interpretation
+
+### Definition of Done
+Chapter 5 pipeline runs end-to-end, outputs are generated under `outputs/chapter5`, tests pass, and conclusions remain conservative (risk control evidence first, no overclaim on ML or crypto).
+
+---
+
 ## Phase 0: Repository and Environment Setup ✅
 
 **Goal:** Establish a clean, reproducible project foundation.

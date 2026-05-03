@@ -1,0 +1,220 @@
+{
+  "chapter": 5,
+  "name": "supervised_risk_overlay",
+  "calendar_policy": "business_day_aligned",
+  "annualization_factor": 252,
+  "holding_return_method": "drifted_buy_and_hold",
+  "validation": {
+    "method": "walk_forward",
+    "train_window": 756,
+    "test_window": 63,
+    "step_size": 21,
+    "min_train_size": 504,
+    "embargo_days": 21,
+    "random_state": 42
+  },
+  "targets_config": {
+    "volatility": {
+      "enabled": true,
+      "horizons": [
+        21,
+        63
+      ],
+      "assets": [
+        "portfolio",
+        "SPY",
+        "BTC-USD"
+      ],
+      "annualize": true
+    },
+    "drawdown_event": {
+      "enabled": true,
+      "horizons": [
+        21,
+        63
+      ],
+      "thresholds": {
+        "portfolio_21d": -0.05,
+        "portfolio_63d": -0.1,
+        "btc_21d": -0.15,
+        "btc_63d": -0.25
+      }
+    },
+    "stress_event": {
+      "enabled": true,
+      "definition": "forward_es_or_drawdown",
+      "horizon": 21,
+      "quantile": 0.1
+    }
+  },
+  "features_config": {
+    "lookbacks": {
+      "short": 21,
+      "medium": 63,
+      "long": 126
+    },
+    "include": {
+      "rolling_vol": true,
+      "rolling_return": true,
+      "rolling_drawdown": true,
+      "rolling_correlations": true,
+      "momentum": true,
+      "regime_labels": true,
+      "regime_probabilities": true,
+      "crypto_risk_features": true,
+      "portfolio_features": true
+    },
+    "pairs_for_correlation": [
+      [
+        "SPY",
+        "TLT"
+      ],
+      [
+        "SPY",
+        "GLD"
+      ],
+      [
+        "SPY",
+        "BTC-USD"
+      ],
+      [
+        "BTC-USD",
+        "ETH-USD"
+      ],
+      [
+        "TLT",
+        "GLD"
+      ]
+    ]
+  },
+  "models_attempted": [
+    "calibrated_logistic",
+    "elastic_net",
+    "ewma",
+    "gradient_boosting_classifier",
+    "logistic",
+    "naive_rolling_vol",
+    "random_forest",
+    "random_forest_classifier",
+    "ridge"
+  ],
+  "models_selected": [
+    {
+      "target_col": "target_portfolio_vol_21d",
+      "task": "regression",
+      "best_model": "naive_rolling_vol",
+      "selected_model": "naive_rolling_vol",
+      "improved_vs_naive": false
+    },
+    {
+      "target_col": "target_portfolio_vol_63d",
+      "task": "regression",
+      "best_model": "naive_rolling_vol",
+      "selected_model": "naive_rolling_vol",
+      "improved_vs_naive": false
+    },
+    {
+      "target_col": "target_spy_vol_21d",
+      "task": "regression",
+      "best_model": "elastic_net",
+      "selected_model": "elastic_net",
+      "improved_vs_naive": true
+    },
+    {
+      "target_col": "target_btc_vol_21d",
+      "task": "regression",
+      "best_model": "elastic_net",
+      "selected_model": "elastic_net",
+      "improved_vs_naive": true
+    },
+    {
+      "target_col": "target_spy_vol_63d",
+      "task": "regression",
+      "best_model": "elastic_net",
+      "selected_model": "elastic_net",
+      "improved_vs_naive": true
+    },
+    {
+      "target_col": "target_btc_vol_63d",
+      "task": "regression",
+      "best_model": "elastic_net",
+      "selected_model": "elastic_net",
+      "improved_vs_naive": true
+    },
+    {
+      "target_col": "target_portfolio_dd_21d",
+      "task": "regression",
+      "best_model": "elastic_net",
+      "selected_model": "elastic_net",
+      "improved_vs_naive": true
+    },
+    {
+      "target_col": "target_portfolio_dd_63d",
+      "task": "regression",
+      "best_model": "elastic_net",
+      "selected_model": "elastic_net",
+      "improved_vs_naive": true
+    },
+    {
+      "target_col": "target_portfolio_dd_event_21d",
+      "task": "classification",
+      "best_model": "random_forest_classifier",
+      "selected_model": "random_forest_classifier",
+      "improved_vs_naive": true
+    },
+    {
+      "target_col": "target_portfolio_dd_event_63d",
+      "task": "classification",
+      "best_model": "calibrated_logistic",
+      "selected_model": "calibrated_logistic",
+      "improved_vs_naive": true
+    },
+    {
+      "target_col": "target_btc_dd_event_21d",
+      "task": "classification",
+      "best_model": "calibrated_logistic",
+      "selected_model": "calibrated_logistic",
+      "improved_vs_naive": true
+    },
+    {
+      "target_col": "target_stress_event_21d",
+      "task": "classification",
+      "best_model": "gradient_boosting_classifier",
+      "selected_model": "gradient_boosting_classifier",
+      "improved_vs_naive": true
+    }
+  ],
+  "overlay_forecast_source": {
+    "vol_forecast_file": "C:\\Users\\dframent\\OneDrive - NTT DATA EMEAL\\Desktop\\ProyectosData\\Multi_Asset_Portfolio_Optimization\\outputs\\chapter5\\predictions_target_portfolio_vol_21d_naive_rolling_vol.csv",
+    "vol_model_requested": "naive_rolling_vol",
+    "vol_model_used": "naive_rolling_vol",
+    "vol_fallback_used": false,
+    "stress_forecast_file": "C:\\Users\\dframent\\OneDrive - NTT DATA EMEAL\\Desktop\\ProyectosData\\Multi_Asset_Portfolio_Optimization\\outputs\\chapter5\\predictions_target_stress_event_21d_gradient_boosting_classifier.csv",
+    "stress_model_requested": "gradient_boosting_classifier",
+    "stress_model_used": "gradient_boosting_classifier",
+    "stress_fallback_used": false
+  },
+  "forecast_coverage": {
+    "n_rebalance_dates": 89,
+    "n_forecast_rows": 2173,
+    "n_rebalance_with_forecast": 52
+  },
+  "input_paths": {
+    "returns_path": "data/processed/returns_simple.csv",
+    "baseline_weights_path": "data/processed/weights_history.csv",
+    "regime_labels_path": "data/processed/regime_analysis/regime_labels.csv"
+  },
+  "output_paths": {
+    "summary": "C:\\Users\\dframent\\OneDrive - NTT DATA EMEAL\\Desktop\\ProyectosData\\Multi_Asset_Portfolio_Optimization\\outputs\\chapter5\\overlay_backtest_summary.csv",
+    "daily_returns": "C:\\Users\\dframent\\OneDrive - NTT DATA EMEAL\\Desktop\\ProyectosData\\Multi_Asset_Portfolio_Optimization\\outputs\\chapter5\\overlay_daily_returns.csv",
+    "weights": "C:\\Users\\dframent\\OneDrive - NTT DATA EMEAL\\Desktop\\ProyectosData\\Multi_Asset_Portfolio_Optimization\\outputs\\chapter5\\overlay_weights.csv",
+    "decisions": "C:\\Users\\dframent\\OneDrive - NTT DATA EMEAL\\Desktop\\ProyectosData\\Multi_Asset_Portfolio_Optimization\\outputs\\chapter5\\overlay_decisions.csv",
+    "turnover": "C:\\Users\\dframent\\OneDrive - NTT DATA EMEAL\\Desktop\\ProyectosData\\Multi_Asset_Portfolio_Optimization\\outputs\\chapter5\\overlay_turnover.csv"
+  },
+  "run_timestamp_utc": "2026-05-03T14:53:49.927237+00:00",
+  "notes": [
+    "Chapter 5 focuses on risk forecasting (volatility/stress), not return prediction.",
+    "If ML does not improve walk-forward validation vs naive, fallback uses naive/logistic baselines.",
+    "No synthetic cash is introduced in base overlay; de-risking redistributes to defensive assets."
+  ]
+}

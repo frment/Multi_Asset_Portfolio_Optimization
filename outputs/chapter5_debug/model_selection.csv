@@ -1,0 +1,13 @@
+target_col,task,best_model,selected_model,improved_vs_naive
+target_portfolio_vol_21d,regression,naive_rolling_vol,naive_rolling_vol,False
+target_portfolio_vol_63d,regression,,naive_rolling_vol,False
+target_spy_vol_21d,regression,,naive_rolling_vol,False
+target_btc_vol_21d,regression,,naive_rolling_vol,False
+target_spy_vol_63d,regression,,naive_rolling_vol,False
+target_btc_vol_63d,regression,,naive_rolling_vol,False
+target_portfolio_dd_21d,regression,,naive_rolling_vol,False
+target_portfolio_dd_63d,regression,,naive_rolling_vol,False
+target_portfolio_dd_event_21d,classification,,logistic,False
+target_portfolio_dd_event_63d,classification,,logistic,False
+target_btc_dd_event_21d,classification,,logistic,False
+target_stress_event_21d,classification,logistic,logistic,False

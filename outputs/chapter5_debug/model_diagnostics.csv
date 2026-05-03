@@ -1,0 +1,4 @@
+target_col,task,model_name,n_samples,n_splits,n_predictions,status
+target_portfolio_vol_21d,regression,naive_rolling_vol,1894,51,189,ok
+target_portfolio_vol_21d,regression,ridge,1894,51,189,ok
+target_stress_event_21d,classification,logistic,1894,51,189,ok

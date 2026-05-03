@@ -1,0 +1,4 @@
+target_col,task,model_name,n_samples,n_splits,n_predictions,status,mae,rmse,r2_oos,corr_pred_actual,directional_accuracy,roc_auc,pr_auc,accuracy,precision,recall,f1,brier,tn,fp,fn,tp
+target_portfolio_vol_21d,regression,naive_rolling_vol,1894,51,189,ok,0.016531919472863768,0.021457530565601936,-0.4779250599595939,0.31985880763194563,1.0,,,,,,,,,,,
+target_portfolio_vol_21d,regression,ridge,1894,51,189,ok,0.06340607476749181,0.07375035741574726,-16.459073457882532,0.1354306032410809,1.0,,,,,,,,,,,
+target_stress_event_21d,classification,logistic,1894,51,189,ok,,,,,,0.31191222570532917,0.19275915798304413,0.7671957671957672,0.0,0.0,0.0,0.2321048888766895,145.0,0.0,44.0,0.0

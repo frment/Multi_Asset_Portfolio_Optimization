@@ -1,0 +1,134 @@
+chapter: 5
+name: supervised_risk_overlay
+
+calendar:
+  inherit_from: settings.yaml
+  policy: business_day_aligned
+  annualization_factor: 252
+
+data:
+  returns_path: data/processed/returns_simple.csv
+  prices_path: data/processed/prices_aligned.csv
+  regime_labels_path: data/processed/regime_analysis/regime_labels.csv
+  regime_metadata_path: data/processed/regime_analysis/regime_model_metadata.json
+  baseline_weights_path: data/processed/weights_history.csv
+  baseline_returns_path: data/processed/portfolio_returns.csv
+
+targets:
+  volatility:
+    enabled: true
+    horizons: [21, 63]
+    assets:
+      - portfolio
+      - SPY
+      - BTC-USD
+    annualize: true
+
+  drawdown_event:
+    enabled: true
+    horizons: [21, 63]
+    thresholds:
+      portfolio_21d: -0.05
+      portfolio_63d: -0.10
+      btc_21d: -0.15
+      btc_63d: -0.25
+
+  stress_event:
+    enabled: true
+    definition: forward_es_or_drawdown
+    horizon: 21
+    quantile: 0.10
+
+features:
+  lookbacks:
+    short: 21
+    medium: 63
+    long: 126
+
+  include:
+    rolling_vol: true
+    rolling_return: true
+    rolling_drawdown: true
+    rolling_correlations: true
+    momentum: true
+    regime_labels: true
+    regime_probabilities: true
+    crypto_risk_features: true
+    portfolio_features: true
+
+  pairs_for_correlation:
+    - [SPY, TLT]
+    - [SPY, GLD]
+    - [SPY, BTC-USD]
+    - [BTC-USD, ETH-USD]
+    - [TLT, GLD]
+
+validation:
+  method: walk_forward
+  train_window: 756
+  test_window: 63
+  step_size: 21
+  min_train_size: 504
+  embargo_days: 21
+  random_state: 42
+
+models:
+  volatility:
+    - naive_rolling_vol
+    - ewma
+    - ridge
+    - elastic_net
+    - random_forest
+
+  drawdown_event:
+    - logistic
+    - calibrated_logistic
+    - random_forest_classifier
+    - gradient_boosting_classifier
+
+  stress_event:
+    - logistic
+    - calibrated_logistic
+    - gradient_boosting_classifier
+
+overlay:
+  enabled: true
+  base_strategy: minvar_baseline_corrected
+
+  volatility_targeting:
+    enabled: false
+    target_vol: 0.10
+    min_scale: 0.50
+    max_scale: 1.25
+    smoothing: 0.50
+
+  dynamic_crypto_cap:
+    enabled: true
+    normal_cap: 0.20
+    medium_risk_cap: 0.05
+    high_risk_cap: 0.00
+    vol_threshold_quantiles:
+      medium: 0.70
+      high: 0.85
+    crash_probability_thresholds:
+      medium: 0.25
+      high: 0.40
+
+  de_risking:
+    enabled: true
+    high_risk_scale: 0.70
+    medium_risk_scale: 0.90
+    defensive_assets:
+      - TLT
+      - GLD
+
+costs:
+  inherit_from: settings.yaml
+  apply_costs: true
+  cost_bps: 10.0
+
+reporting:
+  output_dir: outputs/chapter5
+  save_predictions: true
+  save_overlay_decisions: true
+  save_model_scores: true

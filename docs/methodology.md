@@ -49,9 +49,23 @@ Sensitivity:
 - Real model used is persisted to `regime_model_metadata.json`.
 - Regime outputs are diagnostic/in-sample attribution, not forecasts.
 
+## Supervised Risk Forecasting and Overlay (Chapter 5)
+
+- Objective: evaluate whether risk-forecasting overlays improve downside control OOS, net of costs.
+- Targets are forward-looking and leakage-safe (t+1:t+h windows):
+	- realized volatility,
+	- forward drawdown / drawdown events,
+	- stress-event proxy from forward lower-tail outcomes.
+- Features are trailing-only at time t (rolling vol/return/drawdown/correlation/ES, optional regime diagnostics).
+- Validation uses walk-forward splits with embargo (default 21 days).
+- Model families are conservative and reproducible (naive, EWMA, linear, tree-based).
+- Model selection rule: promote model to overlay only if it improves naive baseline in walk-forward validation.
+- Overlay design prioritizes dynamic crypto cap and defensive redistribution; no synthetic cash in base implementation.
+- Economic evaluation remains primary: drawdown, ES95, Sharpe/Sortino/Calmar, turnover, and net costs.
+
 ## Limitations
 
 - Historical data only; no execution slippage model yet.
 - Cost model is strategy-level and simplified.
 - Regime labels are not tradable signals.
-- Chapter 5 forecasting overlays are out of scope for v0.4.1.
+- Chapter 5 overlays are implemented with conservative assumptions and should not be interpreted as stable alpha signals.
