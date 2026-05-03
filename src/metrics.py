@@ -110,6 +110,51 @@ def calmar_ratio(daily_returns: pd.Series) -> float:
     return float(ann_ret / abs(mdd))
 
 
+def expected_shortfall_historical(
+    daily_returns: pd.Series,
+    beta: float = 0.95,
+) -> float:
+    """Compute historical Expected Shortfall (CVaR) of daily losses.
+
+    Args:
+        daily_returns: Series of daily simple returns.
+        beta: Confidence level in (0, 1), for example 0.95.
+
+    Returns:
+        Tail mean of losses beyond historical VaR at ``beta``.
+    """
+    if len(daily_returns) == 0:
+        return float("nan")
+    if not 0.0 < float(beta) < 1.0:
+        raise ValueError(f"beta must be in (0, 1), got {beta}.")
+
+    losses = -daily_returns.astype(float)
+    var_beta = float(np.quantile(losses, beta))
+    tail = losses[losses >= var_beta]
+    if len(tail) == 0:
+        return var_beta
+    return float(tail.mean())
+
+
+def return_over_es(
+    daily_returns: pd.Series,
+    beta: float = 0.95,
+) -> float:
+    """Compute annualized return divided by absolute historical ES.
+
+    Args:
+        daily_returns: Series of daily simple returns.
+        beta: Confidence level used for Expected Shortfall.
+
+    Returns:
+        Ratio ``annualised_return / abs(expected_shortfall)``.
+    """
+    es = expected_shortfall_historical(daily_returns, beta=beta)
+    if np.isnan(es) or np.isclose(es, 0.0):
+        return float("nan")
+    return float(annualised_return(daily_returns) / abs(es))
+
+
 def compute_all_metrics(
     daily_returns: pd.Series,
     risk_free_rate: float = 0.0,

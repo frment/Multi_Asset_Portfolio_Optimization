@@ -27,9 +27,10 @@ from src.backtest import (
     compute_pretrade_weights,
     compute_turnover_one_way,
     get_rebalance_dates,
+    run_rolling_backtest,
     run_min_variance_backtest,
 )
-from src.optimizer import load_optimizer_config
+from src.optimizer import load_optimizer_config, minimise_variance
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +199,30 @@ class TestTemporalSeparation:
             training_window = synthetic_returns.iloc[pos - 126 : pos]
             assert rebal_date not in training_window.index
             assert training_window.index[-1] < rebal_date
+
+
+def test_minvar_wrapper_invariant_vs_generic_engine(synthetic_returns, minimal_optimizer_config):
+    """Regression check: wrapper output must match generic engine for MinVar."""
+    wrapper_returns, wrapper_weights, wrapper_turnover = run_min_variance_backtest(
+        returns=synthetic_returns,
+        optimizer_config=minimal_optimizer_config,
+        lookback_window=126,
+        rebalance_frequency="monthly",
+    )
+
+    generic_returns, generic_weights, generic_turnover = run_rolling_backtest(
+        returns=synthetic_returns,
+        optimizer_fn=minimise_variance,
+        optimizer_config=minimal_optimizer_config,
+        lookback_window=126,
+        rebalance_frequency="monthly",
+        strategy_name="min_variance",
+        optimizer_kwargs={"covariance_method": "sample"},
+    )
+
+    pd.testing.assert_series_equal(wrapper_returns, generic_returns, check_exact=False, atol=1e-12)
+    pd.testing.assert_frame_equal(wrapper_weights, generic_weights, check_exact=False, atol=1e-12)
+    pd.testing.assert_frame_equal(wrapper_turnover, generic_turnover, check_exact=False, atol=1e-12)
 
 
 # ---------------------------------------------------------------------------

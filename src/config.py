@@ -65,3 +65,12 @@ def load_robustness() -> dict[str, Any]:
         Dictionary with first-pass robustness setup.
     """
     return load_yaml("robustness.yaml")
+
+
+def load_tail_risk() -> dict[str, Any]:
+    """Load Chapter 3 tail-risk configuration.
+
+    Returns:
+        Dictionary with CVaR setup, comparators, costs, and stress windows.
+    """
+    return load_yaml("tail_risk.yaml")
