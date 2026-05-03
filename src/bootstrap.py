@@ -65,7 +65,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from src.metrics import TRADING_DAYS_PER_YEAR
+from src.metrics import DEFAULT_ANNUALIZATION_FACTOR
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -101,8 +101,8 @@ def _sharpe_from_returns(returns: np.ndarray) -> float:
     """Annualised Sharpe ratio (risk-free = 0) from a 1-D array of daily returns."""
     if len(returns) < 2:
         return float("nan")
-    mu = np.mean(returns) * TRADING_DAYS_PER_YEAR
-    sigma = np.std(returns, ddof=1) * np.sqrt(TRADING_DAYS_PER_YEAR)
+    mu = np.mean(returns) * DEFAULT_ANNUALIZATION_FACTOR
+    sigma = np.std(returns, ddof=1) * np.sqrt(DEFAULT_ANNUALIZATION_FACTOR)
     if sigma == 0.0:
         return float("nan")
     return mu / sigma

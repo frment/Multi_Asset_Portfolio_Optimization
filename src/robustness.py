@@ -218,9 +218,14 @@ def _to_native_summary_row(
     spec: RobustnessSpec,
     run_result: RunResult,
     risk_free_rate: float,
+    annualization_factor: float,
 ) -> dict[str, Any]:
     series = run_result.returns
-    metrics = compute_all_metrics(series, risk_free_rate=risk_free_rate)
+    metrics = compute_all_metrics(
+        series,
+        risk_free_rate=risk_free_rate,
+        annualization_factor=annualization_factor,
+    )
     mean_to, med_to, max_to = _turnover_stats(run_result.turnover_history)
 
     return {
@@ -335,6 +340,7 @@ def _build_family_common_summary(
     returns_panel: pd.DataFrame,
     turnover_panel: pd.DataFrame,
     risk_free_rate: float,
+    annualization_factor: float,
 ) -> pd.DataFrame:
     """Recompute metrics on common sample per experiment family."""
     rows: list[dict[str, Any]] = []
@@ -373,7 +379,11 @@ def _build_family_common_summary(
                 continue
 
             series = exp_returns.set_index("date")["portfolio_return"].sort_index()
-            metrics = compute_all_metrics(series, risk_free_rate=risk_free_rate)
+            metrics = compute_all_metrics(
+                series,
+                risk_free_rate=risk_free_rate,
+                annualization_factor=annualization_factor,
+            )
 
             exp_turnover = turnover_panel.loc[
                 (turnover_panel["experiment_id"] == exp_id)
@@ -438,6 +448,7 @@ def _build_cost_scenario_summary(
     turnover_panel: pd.DataFrame,
     risk_free_rate: float,
     cost_scenarios_bps: list[float],
+    annualization_factor: float,
 ) -> pd.DataFrame:
     """Build net-of-cost summaries for each experiment and cost scenario.
 
@@ -488,7 +499,11 @@ def _build_cost_scenario_summary(
                 gross_series,
                 rebalance_costs,
             )
-            net_metrics = compute_all_metrics(net_series, risk_free_rate=risk_free_rate)
+            net_metrics = compute_all_metrics(
+                net_series,
+                risk_free_rate=risk_free_rate,
+                annualization_factor=annualization_factor,
+            )
 
             row = {
                 "experiment_id": exp_id,
@@ -546,6 +561,9 @@ def run_first_pass_robustness(
     covariance_methods: list[str] | None = None,
     include_no_crypto_anchor_in_covariance_family: bool = True,
     cost_scenarios_bps: list[float] | None = None,
+    annualization_factor: float = 252.0,
+    holding_return_method: str = "drifted_buy_and_hold",
+    allow_weekend_rebalances: bool = True,
 ) -> dict[str, pd.DataFrame]:
     """Execute all first-pass robustness experiments.
 
@@ -585,6 +603,8 @@ def run_first_pass_robustness(
                 lookback_window=int(spec.lookback_window_days),
                 rebalance_frequency=spec.rebalance_frequency,
                 covariance_method=spec.covariance_method,
+                holding_return_method=holding_return_method,
+                allow_weekend_rebalances=allow_weekend_rebalances,
             )
             cache[sig] = RunResult(
                 returns=portfolio_returns,
@@ -598,7 +618,14 @@ def run_first_pass_robustness(
 
         result = cache[sig]
 
-        summary_rows.append(_to_native_summary_row(spec, result, risk_free_rate))
+        summary_rows.append(
+            _to_native_summary_row(
+                spec,
+                result,
+                risk_free_rate,
+                annualization_factor,
+            )
+        )
         returns_frames.append(_returns_panel_row(spec, result.returns))
         weights_frames.append(_weights_panel_rows(spec, result.weights_history))
         turnover_frames.append(_turnover_panel_rows(spec, result.turnover_history))
@@ -617,6 +644,8 @@ def run_first_pass_robustness(
                 "benchmark_policy": "min_variance_only_benchmarks_deferred",
                 "transaction_cost_model": "cost_t=turnover_one_way_t*cost_rate_post_processing",
                 "explicitly_out_of_scope": "asset_level_spreads,slippage,market_impact,asset_class_specific_costs",
+                "annualization_factor": float(annualization_factor),
+                "holding_return_method": holding_return_method,
                 "reused_result_from": reused_from,
             }
         )
@@ -640,6 +669,7 @@ def run_first_pass_robustness(
         returns_panel=returns_panel,
         turnover_panel=turnover_panel,
         risk_free_rate=risk_free_rate,
+        annualization_factor=annualization_factor,
     )
 
     cost_scenarios = cost_scenarios_bps if cost_scenarios_bps is not None else [0.0, 10.0, 25.0, 50.0]
@@ -649,6 +679,7 @@ def run_first_pass_robustness(
         turnover_panel=turnover_panel,
         risk_free_rate=risk_free_rate,
         cost_scenarios_bps=cost_scenarios,
+        annualization_factor=annualization_factor,
     )
     net_summary_common_family = _build_cost_scenario_summary(
         base_summary=common_family_summary,
@@ -656,6 +687,7 @@ def run_first_pass_robustness(
         turnover_panel=turnover_panel,
         risk_free_rate=risk_free_rate,
         cost_scenarios_bps=cost_scenarios,
+        annualization_factor=annualization_factor,
     )
 
     return {

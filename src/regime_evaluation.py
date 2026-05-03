@@ -198,7 +198,11 @@ def _align_returns_with_labels(returns_df: pd.DataFrame, labels_df: pd.DataFrame
 
 
 
-def _regime_metrics_table(panel: pd.DataFrame, beta: float) -> pd.DataFrame:
+def _regime_metrics_table(
+    panel: pd.DataFrame,
+    beta: float,
+    annualization_factor: float,
+) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
 
     for (strategy, regime_id, regime_name), grp in panel.groupby(["strategy", "regime_id", "regime_name"]):
@@ -209,12 +213,16 @@ def _regime_metrics_table(panel: pd.DataFrame, beta: float) -> pd.DataFrame:
             "strategy": str(strategy),
             "regime_id": int(regime_id),
             "regime_name": str(regime_name),
-            "ann_return": annualised_return(returns),
-            "ann_volatility": annualised_volatility(returns),
-            "sharpe": sharpe_ratio(returns),
+            "ann_return": annualised_return(returns, annualization_factor=annualization_factor),
+            "ann_volatility": annualised_volatility(returns, annualization_factor=annualization_factor),
+            "sharpe": sharpe_ratio(returns, annualization_factor=annualization_factor),
             "max_drawdown": max_drawdown(returns),
             "expected_shortfall": expected_shortfall_historical(returns, beta=beta),
-            "return_over_es": return_over_es(returns, beta=beta),
+            "return_over_es": return_over_es(
+                returns,
+                beta=beta,
+                annualization_factor=annualization_factor,
+            ),
             "hit_rate": float((returns > 0.0).mean()),
             "avg_negative_return": float(negatives.mean()) if len(negatives) > 0 else float("nan"),
             "n_obs": int(len(returns)),
@@ -397,6 +405,9 @@ def evaluate_regimes_from_frames(
     eval_cfg = cfg["evaluation"]
     strategies = [str(s) for s in eval_cfg["strategies"]]
     beta = float(eval_cfg.get("es_beta", 0.95))
+    annualization_factor = float(
+        cfg.get("dataset_metadata", {}).get("annualization_factor", 252.0)
+    )
     cost_bps = float(eval_cfg.get("cost_bps", 10.0))
     min_obs_warn = int(eval_cfg.get("min_obs_warning_threshold", 63))
     crypto_tickers = [str(t) for t in eval_cfg.get("crypto_tickers", ["BTC-USD", "ETH-USD"])]
@@ -411,8 +422,16 @@ def evaluate_regimes_from_frames(
     net_returns = _build_net_returns_panel(gross_returns, turnover, cost_bps=cost_bps)
     net_panel = _align_returns_with_labels(net_returns, labels)
 
-    cond_gross = _regime_metrics_table(gross_panel, beta=beta)
-    cond_net = _regime_metrics_table(net_panel, beta=beta)
+    cond_gross = _regime_metrics_table(
+        gross_panel,
+        beta=beta,
+        annualization_factor=annualization_factor,
+    )
+    cond_net = _regime_metrics_table(
+        net_panel,
+        beta=beta,
+        annualization_factor=annualization_factor,
+    )
 
     for _, row in cond_gross.iterrows():
         if int(row["n_obs"]) < min_obs_warn:

@@ -37,6 +37,7 @@ signals.
 
 from __future__ import annotations
 
+import json
 import logging
 import warnings
 from dataclasses import dataclass, field
@@ -292,7 +293,8 @@ def detect_regimes(
     det = cfg["detection"]
     random_state: int = det["random_state"]
     primary_model: str = det["primary_model"]
-    n_states_default: int = det["n_states_default"]
+    n_states_default: int = int(det.get("n_states", det.get("n_states_default", 2)))
+    allow_fallback: bool = bool(det.get("allow_fallback", True))
     hmm_cfg = det["hmm"]
     stress_weights: dict[str, float] = det["stress_score_features"]
 
@@ -320,11 +322,13 @@ def detect_regimes(
     # ── Select and fit the primary model ─────────────────────────────────
     use_hmm = (primary_model == "hmm") and _HMM_AVAILABLE
     if (primary_model == "hmm") and not _HMM_AVAILABLE:
-        logger.warning(
-            "Primary model is 'hmm' but hmmlearn is not available. "
-            "Falling back to KMeans with n_states=%d.",
-            n_states_default,
+        message = (
+            "Primary model is 'hmm' but hmmlearn is not installed. "
+            "Install hmmlearn or set detection.allow_fallback=true."
         )
+        if not allow_fallback:
+            raise ImportError(message)
+        logger.warning("%s Falling back to KMeans with n_states=%d.", message, n_states_default)
 
     if use_hmm:
         logger.info(
@@ -391,6 +395,16 @@ def detect_regimes(
         model_summary=summary_df,
         log_likelihood=log_ll,
         inertia=inertia,
+        extra={
+            "primary_model_requested": primary_model,
+            "model_used": model_id,
+            "allow_fallback": allow_fallback,
+            "random_state": int(random_state),
+            "n_states": int(n_states_default),
+            "feature_set": feature_names,
+            "calendar_policy": cfg.get("dataset_metadata", {}).get("calendar_policy"),
+            "annualization_factor": cfg.get("dataset_metadata", {}).get("annualization_factor"),
+        },
     )
 
 
@@ -439,6 +453,16 @@ def save_results(result: RegimeResult, cfg: dict[str, Any], project_root: Path) 
     result.transition_matrix.to_csv(trans_path)
     paths["regime_transition_matrix"] = trans_path
     logger.info("Saved regime_transition_matrix → %s", trans_path)
+
+    metadata_rel = out_cfg.get("regime_model_metadata")
+    if metadata_rel:
+        metadata_path = project_root / metadata_rel
+        metadata_payload = dict(result.extra)
+        metadata_payload["model_id"] = result.model_id
+        with metadata_path.open("w", encoding="utf-8") as file:
+            json.dump(metadata_payload, file, indent=2)
+        paths["regime_model_metadata"] = metadata_path
+        logger.info("Saved regime_model_metadata → %s", metadata_path)
 
     return paths
 

@@ -1,0 +1,18 @@
+{
+  "calendar_policy": "business_day_aligned",
+  "annualization_factor": 252.0,
+  "start_date": "2018-01-02",
+  "end_date": "2026-05-01",
+  "n_observations": 2174,
+  "n_weekend_rows": 0,
+  "tradfi_assets": [
+    "SPY",
+    "QQQ",
+    "GLD",
+    "TLT"
+  ],
+  "crypto_assets": [
+    "BTC-USD",
+    "ETH-USD"
+  ]
+}

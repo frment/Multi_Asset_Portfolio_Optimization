@@ -212,6 +212,12 @@ def build_regime_features(
 
     feat_cfg = cfg["features"]
     vol_cfg = feat_cfg["realized_volatility"]
+    annualization_factor = float(
+        cfg.get("dataset_metadata", {}).get(
+            "annualization_factor",
+            vol_cfg["annualization_factor"],
+        )
+    )
     dd_cfg = feat_cfg["drawdown"]
     corr_cfg = feat_cfg["correlation"]
     mom_cfg = feat_cfg["momentum"]
@@ -225,7 +231,7 @@ def build_regime_features(
             ticker=ticker,
             window=vol_cfg["window"],
             min_periods=vol_cfg["min_periods"],
-            annualization_factor=vol_cfg["annualization_factor"],
+            annualization_factor=annualization_factor,
         )
         series_list.append(s)
         logger.debug("Built feature: %s", s.name)

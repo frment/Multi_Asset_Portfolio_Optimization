@@ -8,6 +8,20 @@ data:
   frequency: "daily"
   price_field: "Adj Close"
   fill_method: "ffill"
+  calendar:
+    policy: "business_day_aligned"
+    tradfi_assets:
+      - "SPY"
+      - "QQQ"
+      - "GLD"
+      - "TLT"
+    crypto_assets:
+      - "BTC-USD"
+      - "ETH-USD"
+    require_tradfi_observation: true
+    allow_weekend_rebalances: false
+    annualization_factor: 252
+    calendar_day_annualization_factor: 365.25
 
 portfolio_constraints:
   long_only: true
@@ -18,7 +32,8 @@ portfolio_constraints:
 backtest:
   rebalance_frequency: "monthly"
   lookback_window_days: 252
-  trading_days_per_year: 252
+  holding_return_method: "drifted_buy_and_hold"
+  annualization_factor: 252
   risk_free_rate: 0.0
 
 benchmarks:

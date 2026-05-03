@@ -7,6 +7,25 @@ Status legend: `[x]` = done · `[ ]` = pending
 
 ---
 
+## Current Phase: Methodological Audit Hardening (v0.4.1) ✅
+
+Goal: make Chapter 1-4 methodologically consistent before Chapter 5.
+
+### Tasks
+- [x] Enforce business-day aligned baseline calendar and dataset metadata output.
+- [x] Add drifted buy-and-hold holding-period return engine as baseline.
+- [x] Keep constant-target approximation as explicit sensitivity mode.
+- [x] Align monthly drifted benchmark construction with optimizer conventions.
+- [x] Parameterize annualization factor in metrics and runners.
+- [x] Harden Chapter 4 reproducibility (`hmmlearn` dependency + strict fallback policy).
+- [x] Add audit-driven test suite (calendar, rebalance, drift, benchmarks, annualization, regime dependencies, pipeline smoke).
+- [x] Add pipeline runner and before/after audit comparison artifacts.
+
+### Definition of Done
+Chapter 1-4 outputs are reproducible under a single explicit methodology and Chapter 5 starts only after this baseline is validated.
+
+---
+
 ## Phase 0: Repository and Environment Setup ✅
 
 **Goal:** Establish a clean, reproducible project foundation.

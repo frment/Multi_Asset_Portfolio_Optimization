@@ -37,6 +37,7 @@ from src.bootstrap import (  # noqa: E402
     build_confidence_summary,
     run_paired_bootstrap,
 )
+from src.config import get_calendar_settings, load_dataset_metadata, load_settings, resolve_annualization_factor  # noqa: E402
 from src.utils import ensure_directory  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -131,6 +132,16 @@ def _build_net_series_from_turnover(
 
 def main() -> None:
     """Run all pre-registered comparisons and write confidence_summary.csv."""
+    settings = load_settings()
+    metadata = load_dataset_metadata()
+    calendar_cfg = get_calendar_settings(settings)
+    annualization_factor = resolve_annualization_factor(settings=settings, dataset_metadata=metadata)
+    print("Methodology settings")
+    print(f"  calendar_policy       : {metadata.get('calendar_policy', calendar_cfg.get('policy'))}")
+    print(f"  annualization_factor  : {annualization_factor}")
+    print(f"  holding_return_method : {settings.get('backtest', {}).get('holding_return_method', 'drifted_buy_and_hold')}")
+    print(f"  rebalance_frequency   : {settings.get('backtest', {}).get('rebalance_frequency', 'monthly')}")
+
     print("Loading returns panel...")
     panel = _load_returns_panel()
 

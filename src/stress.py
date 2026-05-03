@@ -34,6 +34,7 @@ def run_historical_stress_windows(
     beta: float = 0.95,
     risk_free_rate: float = 0.0,
     scope: str = "gross",
+    annualization_factor: float = 252.0,
 ) -> pd.DataFrame:
     """Compute stress-period metrics for all strategies on registered windows.
 
@@ -63,9 +64,13 @@ def run_historical_stress_windows(
             if clipped.empty:
                 continue
 
-            perf = compute_all_metrics(clipped, risk_free_rate=risk_free_rate)
+            perf = compute_all_metrics(
+                clipped,
+                risk_free_rate=risk_free_rate,
+                annualization_factor=annualization_factor,
+            )
             es = expected_shortfall_historical(clipped, beta=beta)
-            ratio = return_over_es(clipped, beta=beta)
+            ratio = return_over_es(clipped, beta=beta, annualization_factor=annualization_factor)
 
             rows.append(
                 {

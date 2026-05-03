@@ -24,8 +24,13 @@ from src.backtest import (  # noqa: E402
     get_rebalance_dates,
     run_min_variance_backtest,
 )
-from src.benchmarks import build_all_benchmarks  # noqa: E402
-from src.config import load_settings  # noqa: E402
+from src.benchmarks import run_benchmark_suite  # noqa: E402
+from src.config import (  # noqa: E402
+    get_calendar_settings,
+    load_dataset_metadata,
+    load_settings,
+    resolve_annualization_factor,
+)
 from src.metrics import compute_all_metrics  # noqa: E402
 from src.optimizer import load_optimizer_config  # noqa: E402
 from src.utils import ensure_directory  # noqa: E402
@@ -91,16 +96,34 @@ def main() -> None:
         print(f"  Date range : {returns.index[0].date()} to {returns.index[-1].date()}")
 
         optimizer_config = load_optimizer_config()
+        dataset_metadata = load_dataset_metadata()
+        calendar_cfg = get_calendar_settings(settings)
+
         lookback = int(settings.get("backtest", {}).get("lookback_window_days", 252))
         rebalance_frequency = str(
             settings.get("backtest", {}).get("rebalance_frequency", "monthly")
         )
+        holding_return_method = str(
+            settings.get("backtest", {}).get("holding_return_method", "drifted_buy_and_hold")
+        )
+        allow_weekend_rebalances = bool(calendar_cfg.get("allow_weekend_rebalances", False))
+        annualization_factor = resolve_annualization_factor(
+            settings=settings,
+            dataset_metadata=dataset_metadata,
+        )
         risk_free_rate = float(settings.get("backtest", {}).get("risk_free_rate", 0.0))
+
+        print("\nMethodology settings")
+        print(f"  calendar_policy        : {dataset_metadata.get('calendar_policy', calendar_cfg.get('policy'))}")
+        print(f"  annualization_factor   : {annualization_factor}")
+        print(f"  holding_return_method  : {holding_return_method}")
+        print(f"  rebalance_frequency    : {rebalance_frequency}")
 
         rebalance_dates = get_rebalance_dates(
             returns.index,
             lookback,
             rebalance_frequency=rebalance_frequency,
+            allow_weekend_rebalances=allow_weekend_rebalances,
         )
         print(f"\nLookback window  : {lookback} trading days")
         print(f"Rebalance freq   : {rebalance_frequency}")
@@ -115,17 +138,23 @@ def main() -> None:
             optimizer_config=optimizer_config,
             lookback_window=lookback,
             rebalance_frequency=rebalance_frequency,
+            holding_return_method=holding_return_method,
+            allow_weekend_rebalances=allow_weekend_rebalances,
         )
         print(f"  OOS period     : {minvar_returns.index[0].date()} to {minvar_returns.index[-1].date()}")
         print(f"  OOS trading days: {len(minvar_returns)}")
 
         # --- 3. Build benchmarks over the same OOS period --------------------
-        # Align all benchmarks to the min-variance OOS start date for a fair
-        # like-for-like comparison.
-        oos_start = minvar_returns.index[0]
-        returns_oos = returns.loc[oos_start:]
-
-        benchmarks = build_all_benchmarks(returns_oos)
+        benchmarks, benchmark_weights, benchmark_turnover = run_benchmark_suite(
+            returns=returns,
+            lookback_window=lookback,
+            rebalance_frequency=rebalance_frequency,
+            holding_return_method=holding_return_method,
+            allow_weekend_rebalances=allow_weekend_rebalances,
+        )
+        oos_start = max(minvar_returns.index[0], benchmarks.index[0])
+        minvar_returns = minvar_returns.loc[oos_start:]
+        benchmarks = benchmarks.loc[oos_start:]
         benchmarks.index.name = "Date"
 
         # --- 4. Compute metrics for all strategies ---------------------------
@@ -136,10 +165,17 @@ def main() -> None:
 
         metric_rows: dict[str, dict] = {}
         for name, series in all_strategies.items():
-            metric_rows[name] = compute_all_metrics(series, risk_free_rate=risk_free_rate)
+            metric_rows[name] = compute_all_metrics(
+                series,
+                risk_free_rate=risk_free_rate,
+                annualization_factor=annualization_factor,
+            )
 
         summary = pd.DataFrame(metric_rows).T
         summary.index.name = "strategy"
+        summary["calendar_policy"] = dataset_metadata.get("calendar_policy", calendar_cfg.get("policy"))
+        summary["annualization_factor"] = annualization_factor
+        summary["holding_return_method"] = holding_return_method
 
         # --- 5. Print summary table ------------------------------------------
         print("\n" + "=" * 67)
@@ -168,10 +204,17 @@ def main() -> None:
         # turnover_history.csv — one row per rebalance, pre-trade drifted turnover.
         turnover_history.to_csv(turnover_history_csv)
 
+        benchmark_turnover_csv = processed_dir / "benchmark_turnover_history.csv"
+        benchmark_weights_csv = processed_dir / "benchmark_weights_history.csv"
+        benchmark_turnover.to_csv(benchmark_turnover_csv, index=False)
+        benchmark_weights.to_csv(benchmark_weights_csv, index=False)
+
         print(f"\nSaved portfolio returns to : {portfolio_returns_csv.relative_to(PROJECT_ROOT)}")
         print(f"Saved weights history to   : {weights_history_csv.relative_to(PROJECT_ROOT)}")
         print(f"Saved backtest summary to  : {backtest_summary_csv.relative_to(PROJECT_ROOT)}")
         print(f"Saved turnover history to  : {turnover_history_csv.relative_to(PROJECT_ROOT)}")
+        print(f"Saved benchmark turnover to: {benchmark_turnover_csv.relative_to(PROJECT_ROOT)}")
+        print(f"Saved benchmark weights to : {benchmark_weights_csv.relative_to(PROJECT_ROOT)}")
 
         # --- 8. Turnover summary ----------------------------------------------
         oos_turnover = turnover_history.loc[~turnover_history["is_initial_rebalance"], "turnover_one_way"]

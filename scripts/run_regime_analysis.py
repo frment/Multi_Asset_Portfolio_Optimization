@@ -30,7 +30,7 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from config import load_regime_analysis  # noqa: E402
+from config import load_dataset_metadata, load_regime_analysis  # noqa: E402
 from regime_features import load_and_build, save_features  # noqa: E402
 from regime_detection import load_and_detect, save_results  # noqa: E402
 from regime_evaluation import load_and_evaluate, save_evaluation_results  # noqa: E402
@@ -66,7 +66,10 @@ def run_detection(cfg: dict[str, Any], project_root: Path) -> tuple[Any, dict[st
     paths = save_results(result, cfg, project_root)
 
     logger.info("Detection output summary:")
-    logger.info("  Model       : %s", result.model_id)
+    logger.info("  Model used  : %s", result.model_id)
+    if result.extra:
+        logger.info("  Requested   : %s", result.extra.get("primary_model_requested"))
+        logger.info("  Fallback ok : %s", result.extra.get("allow_fallback"))
     logger.info("  States      : %d", result.n_states)
     logger.info("  Date range  : %s → %s",
                 result.labels.index.min().date(),
@@ -159,6 +162,13 @@ def main() -> None:
     run_full = not any(vars(args).values())
 
     cfg = load_regime_analysis()
+    cfg["dataset_metadata"] = load_dataset_metadata()
+
+    dataset_meta = cfg.get("dataset_metadata", {})
+    if dataset_meta:
+        logger.info("Dataset metadata loaded:")
+        logger.info("  calendar_policy      : %s", dataset_meta.get("calendar_policy"))
+        logger.info("  annualization_factor : %s", dataset_meta.get("annualization_factor"))
     output_paths: dict[str, Path] = {}
     features = None
     detection_result = None

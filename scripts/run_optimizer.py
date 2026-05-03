@@ -19,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import load_settings  # noqa: E402
+from src.config import get_calendar_settings, load_dataset_metadata, load_settings, resolve_annualization_factor  # noqa: E402
 from src.optimizer import load_optimizer_config, minimise_variance, validate_weights  # noqa: E402
 from src.utils import ensure_directory  # noqa: E402
 
@@ -38,6 +38,9 @@ def main() -> None:
     """Run static minimum variance optimisation and save results."""
     try:
         settings = load_settings()
+        dataset_metadata = load_dataset_metadata()
+        calendar_cfg = get_calendar_settings(settings)
+        annualization_factor = resolve_annualization_factor(settings=settings, dataset_metadata=dataset_metadata)
         processed_dir = PROJECT_ROOT / settings["paths"]["data_processed"]
         ensure_directory(processed_dir)
 
@@ -47,6 +50,12 @@ def main() -> None:
 
         returns = _load_returns_simple(returns_csv)
         config = load_optimizer_config()
+
+        print("Methodology settings")
+        print(f"  calendar_policy      : {dataset_metadata.get('calendar_policy', calendar_cfg.get('policy'))}")
+        print(f"  annualization_factor : {annualization_factor}")
+        print(f"  holding_return_method: {settings.get('backtest', {}).get('holding_return_method', 'drifted_buy_and_hold')}")
+        print(f"  rebalance_frequency  : {settings.get('backtest', {}).get('rebalance_frequency', 'monthly')}")
 
         weights = minimise_variance(returns=returns, config=config)
         violations = validate_weights(weights, config=config)

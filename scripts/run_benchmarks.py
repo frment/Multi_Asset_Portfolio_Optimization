@@ -20,8 +20,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.benchmarks import build_all_benchmarks  # noqa: E402
-from src.config import load_settings  # noqa: E402
+from src.benchmarks import run_benchmark_suite  # noqa: E402
+from src.config import (  # noqa: E402
+    get_calendar_settings,
+    load_dataset_metadata,
+    load_settings,
+    resolve_annualization_factor,
+)
 from src.metrics import compute_all_metrics  # noqa: E402
 from src.utils import ensure_directory  # noqa: E402
 
@@ -92,9 +97,21 @@ def main() -> None:
     """Build benchmarks, compute metrics, print table, and save CSV."""
     try:
         settings = load_settings()
+        dataset_metadata = load_dataset_metadata()
+        calendar_cfg = get_calendar_settings(settings)
         processed_dir = PROJECT_ROOT / settings["paths"]["data_processed"]
         returns_csv = processed_dir / "returns_simple.csv"
         output_csv = processed_dir / "benchmark_summary.csv"
+        lookback = int(settings.get("backtest", {}).get("lookback_window_days", 252))
+        rebalance_frequency = str(settings.get("backtest", {}).get("rebalance_frequency", "monthly"))
+        holding_return_method = str(
+            settings.get("backtest", {}).get("holding_return_method", "drifted_buy_and_hold")
+        )
+        allow_weekend_rebalances = bool(calendar_cfg.get("allow_weekend_rebalances", False))
+        annualization_factor = resolve_annualization_factor(
+            settings=settings,
+            dataset_metadata=dataset_metadata,
+        )
 
         # --- 1. Load returns --------------------------------------------------
         returns = _load_returns_simple(returns_csv)
@@ -102,19 +119,33 @@ def main() -> None:
         print(f"  Date range : {returns.index[0].date()} to {returns.index[-1].date()}")
 
         # --- 2. Build benchmark return series ---------------------------------
-        benchmarks = build_all_benchmarks(returns)
+        benchmarks, benchmark_weights, benchmark_turnover = run_benchmark_suite(
+            returns=returns,
+            lookback_window=lookback,
+            rebalance_frequency=rebalance_frequency,
+            holding_return_method=holding_return_method,
+            allow_weekend_rebalances=allow_weekend_rebalances,
+        )
         print(f"\nBenchmarks built: {list(benchmarks.columns)}")
+        print(f"  calendar_policy      : {dataset_metadata.get('calendar_policy', calendar_cfg.get('policy'))}")
+        print(f"  annualization_factor : {annualization_factor}")
+        print(f"  holding_return_method: {holding_return_method}")
 
         # --- 3. Compute metrics for each benchmark ----------------------------
         risk_free_rate = float(settings.get("backtest", {}).get("risk_free_rate", 0.0))
         rows = {}
         for name in benchmarks.columns:
             rows[name] = compute_all_metrics(
-                benchmarks[name], risk_free_rate=risk_free_rate
+                benchmarks[name],
+                risk_free_rate=risk_free_rate,
+                annualization_factor=annualization_factor,
             )
 
         summary = pd.DataFrame(rows).T  # shape: (n_benchmarks, n_metrics)
         summary.index.name = "benchmark"
+        summary["calendar_policy"] = dataset_metadata.get("calendar_policy", calendar_cfg.get("policy"))
+        summary["annualization_factor"] = annualization_factor
+        summary["holding_return_method"] = holding_return_method
 
         # --- 4. Print readable table ------------------------------------------
         print("\n" + "=" * 60)
@@ -130,6 +161,13 @@ def main() -> None:
         # Round to 6 decimal places to keep the CSV concise.
         summary.round(6).to_csv(output_csv)
         print(f"\nSummary saved to: {output_csv.relative_to(PROJECT_ROOT)}")
+
+        benchmark_turnover_csv = processed_dir / "benchmark_turnover_history.csv"
+        benchmark_weights_csv = processed_dir / "benchmark_weights_history.csv"
+        benchmark_turnover.to_csv(benchmark_turnover_csv, index=False)
+        benchmark_weights.to_csv(benchmark_weights_csv, index=False)
+        print(f"Saved benchmark turnover to: {benchmark_turnover_csv.relative_to(PROJECT_ROOT)}")
+        print(f"Saved benchmark weights to : {benchmark_weights_csv.relative_to(PROJECT_ROOT)}")
 
     except Exception as error:
         print(f"\nBenchmark run failed. Reason: {error}")

@@ -1,0 +1,22 @@
+{
+  "primary_model_requested": "hmm",
+  "model_used": "hmm_2",
+  "allow_fallback": false,
+  "random_state": 42,
+  "n_states": 2,
+  "feature_set": [
+    "realized_vol_spy_63d",
+    "realized_vol_btc_usd_63d",
+    "drawdown_spy_126d",
+    "drawdown_btc_usd_126d",
+    "corr_spy_tlt_126d",
+    "corr_spy_btc_usd_126d",
+    "corr_btc_usd_eth_usd_126d",
+    "momentum_spy_126d",
+    "momentum_btc_usd_126d",
+    "momentum_tlt_126d"
+  ],
+  "calendar_policy": "business_day_aligned",
+  "annualization_factor": 252.0,
+  "model_id": "hmm_2"
+}

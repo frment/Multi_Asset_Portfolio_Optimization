@@ -1,31 +1,14 @@
 """Rolling walk-forward backtest engine.
 
-This module implements a monthly-rebalanced, rolling lookback backtest for the
-constrained minimum variance portfolio.  The design principle is strict temporal
-separation: at every rebalance date, only returns observed *before* that date
-are used to estimate the covariance and compute weights.  This guarantees there
-is no look-ahead bias.
+Baseline methodology:
+- Rebalance at configured frequency (monthly by default).
+- Compute target weights at rebalance date using only prior observations.
+- Hold between rebalances with drifted buy-and-hold weights.
 
-How it works (step by step):
-1. Identify the first trading day of every calendar month (rebalance dates).
-2. Skip months where we don't have at least `lookback_window` days of history.
-3. On each rebalance date t:
-     a. Extract the trailing lookback window: returns[t - lookback_window : t]
-     b. Run the constrained minimum variance optimiser on that window.
-     c. Apply the resulting weights to every day in the holding period
-        [t, next_rebalance_date).  The holding period return for each day is
-        simply the dot product of fixed weights × asset returns.
-4. Concatenate all holding-period return series to form the full backtest history.
-
-Turnover methodology (one-way, professional definition):
-    turnover_one_way_t = 0.5 * sum_i( |w_target_t - w_pretrade_t| )
-
-where w_pretrade_t are the weights *after* drift through the previous holding
-period (i.e. the actual portfolio weights arriving at the new rebalance date,
-before any trading).  This captures real economic turnover rather than a naive
-target-to-target difference.  The first rebalance carries zero turnover because
-there is no prior holding period.
+Legacy approximation is still available via `holding_return_method="constant_target_weights"`.
 """
+
+from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
@@ -36,40 +19,17 @@ import pandas as pd
 from src.optimizer import load_optimizer_config, minimise_variance
 
 
-# ---------------------------------------------------------------------------
-# Rebalance schedule
-# ---------------------------------------------------------------------------
-
 def get_rebalance_dates(
     index: pd.DatetimeIndex,
     lookback_window: int,
     rebalance_frequency: str = "monthly",
+    allow_weekend_rebalances: bool = True,
 ) -> list[pd.Timestamp]:
-    """Return the first available trading day for each rebalance period.
+    """Return the first available date of each period after lookback warm-up."""
+    if len(index) == 0:
+        return []
 
-    Supports monthly, quarterly, and weekly schedules.
-
-    Only periods where at least `lookback_window` trading days of prior history
-    exist are included, because the optimiser needs a full training window.
-
-    Args:
-        index           : DatetimeIndex of the full returns DataFrame.
-        lookback_window : Minimum number of daily observations required before
-                          a rebalance date to fit the covariance estimator.
-        rebalance_frequency: Rebalance schedule. One of:
-                          - "monthly"
-                          - "quarterly"
-                          - "weekly"
-
-    Returns:
-        Sorted list of rebalance timestamps (subset of `index`).
-
-    Raises:
-        ValueError: If `rebalance_frequency` is unsupported.
-    """
     frequency = rebalance_frequency.lower().strip()
-
-    # Group by period and take the first available trading day in each period.
     if frequency == "monthly":
         period_index = index.to_period("M")
     elif frequency == "quarterly":
@@ -82,57 +42,35 @@ def get_rebalance_dates(
             f"{rebalance_frequency}. Use 'monthly', 'quarterly', or 'weekly'."
         )
 
-    first_of_period = (
-        index.to_series()
-        .groupby(period_index)
-        .first()
-        .sort_values()
-        .values
-    )
+    first_of_period = index.to_series().groupby(period_index).first().sort_values().values
 
-    rebalance_dates = []
-    for date in first_of_period:
-        # How many rows of data exist *before* this date?
+    rebalance_dates: list[pd.Timestamp] = []
+    for raw_date in first_of_period:
+        date = pd.Timestamp(raw_date)
+        if not allow_weekend_rebalances and date.dayofweek >= 5:
+            raise ValueError(
+                f"Weekend rebalance date detected ({date.date()}) while "
+                "allow_weekend_rebalances=False."
+            )
+
         pos = index.get_loc(date)
-        if pos >= lookback_window:
-            rebalance_dates.append(pd.Timestamp(date))
+        if int(pos) >= int(lookback_window):
+            rebalance_dates.append(date)
 
     return rebalance_dates
 
-
-# ---------------------------------------------------------------------------
-# Turnover helpers
-# ---------------------------------------------------------------------------
 
 def compute_pretrade_weights(
     target_weights: pd.Series,
     holding_returns: pd.DataFrame,
 ) -> pd.Series:
-    """Compute the drifted (pre-trade) weights arriving at the next rebalance.
-
-    Starting from ``target_weights`` applied at the opening of a holding period,
-    propagate daily returns through the full holding period to find the actual
-    portfolio weights just before the next rebalance trade.
-
-    Args:
-        target_weights : Weight vector (indexed by ticker) at the start of the
-                         holding period.
-        holding_returns: Daily return DataFrame for the holding period.  The
-                         row index must cover every day from the first day of
-                         the period through the day *before* the next rebalance.
-
-    Returns:
-        Drifted weight Series (same ticker index as ``target_weights``),
-        normalised to sum to 1.
-    """
+    """Compute drifted pre-trade weights arriving at the next rebalance."""
     tickers = target_weights.index.tolist()
-    # Gross return of each asset over the holding period: product of (1 + r_t)
+
     gross_returns = (1.0 + holding_returns[tickers]).prod()
-    # Nominal value of each position (starting from weight as unit portfolio)
     drifted_values = target_weights * gross_returns
-    total_value = drifted_values.sum()
-    if total_value <= 0:
-        # Degenerate: return equal weights as a safe fallback.
+    total_value = float(drifted_values.sum())
+    if total_value <= 0.0:
         return pd.Series(1.0 / len(tickers), index=tickers)
     return drifted_values / total_value
 
@@ -141,34 +79,44 @@ def compute_turnover_one_way(
     target_weights: pd.Series,
     pretrade_weights: pd.Series,
 ) -> float:
-    """Compute one-way portfolio turnover at a single rebalance.
-
-    Definition:
-        turnover_one_way = 0.5 * sum_i( |w_target_i - w_pretrade_i| )
-
-    This measures the fraction of the portfolio that must be traded to move
-    from the drifted pre-trade allocation to the new target allocation.
-
-    Args:
-        target_weights  : New target weights from the optimiser.
-        pretrade_weights: Drifted weights arriving at this rebalance date
-                          (output of ``compute_pretrade_weights``).
-
-    Returns:
-        Scalar in [0, 1].
-    """
-    aligned_target   = target_weights.reindex(pretrade_weights.index, fill_value=0.0)
-    aligned_pretrade = pretrade_weights.reindex(target_weights.index, fill_value=0.0)
-    # Use the union of all tickers to handle any index mismatch gracefully.
-    all_tickers = aligned_target.index.union(aligned_pretrade.index)
-    t = aligned_target.reindex(all_tickers, fill_value=0.0)
-    p = aligned_pretrade.reindex(all_tickers, fill_value=0.0)
-    return float(0.5 * np.abs(t - p).sum())
+    """Compute one-way turnover from drifted pre-trade to new target weights."""
+    all_tickers = target_weights.index.union(pretrade_weights.index)
+    target = target_weights.reindex(all_tickers, fill_value=0.0)
+    pretrade = pretrade_weights.reindex(all_tickers, fill_value=0.0)
+    return float(0.5 * np.abs(target - pretrade).sum())
 
 
-# ---------------------------------------------------------------------------
-# Core backtest engine
-# ---------------------------------------------------------------------------
+def _compute_daily_returns_constant_mix(
+    holding_returns: pd.DataFrame,
+    target_weights: pd.Series,
+) -> tuple[pd.Series, pd.Series]:
+    daily_port_return = (holding_returns[target_weights.index] * target_weights.values).sum(axis=1)
+    pretrade = compute_pretrade_weights(target_weights, holding_returns)
+    return daily_port_return, pretrade
+
+
+def _compute_daily_returns_drifted_buy_and_hold(
+    holding_returns: pd.DataFrame,
+    target_weights: pd.Series,
+) -> tuple[pd.Series, pd.Series]:
+    current_weights = target_weights.astype(float).copy()
+    daily_values: list[float] = []
+
+    for _, row in holding_returns[target_weights.index].iterrows():
+        portfolio_return = float((current_weights * row).sum())
+        daily_values.append(portfolio_return)
+
+        denom = 1.0 + portfolio_return
+        if np.isclose(denom, 0.0):
+            raise ValueError("Portfolio value collapsed to zero during holding period.")
+
+        current_weights = current_weights * (1.0 + row)
+        current_weights = current_weights / denom
+        current_weights = current_weights / float(current_weights.sum())
+
+    daily_port_return = pd.Series(daily_values, index=holding_returns.index)
+    return daily_port_return, current_weights
+
 
 def run_rolling_backtest(
     returns: pd.DataFrame,
@@ -178,57 +126,48 @@ def run_rolling_backtest(
     rebalance_frequency: str = "monthly",
     strategy_name: str = "strategy",
     optimizer_kwargs: dict[str, Any] | None = None,
+    holding_return_method: str = "drifted_buy_and_hold",
+    allow_weekend_rebalances: bool = True,
 ) -> tuple[pd.Series, pd.DataFrame, pd.DataFrame]:
-    """Run a generic rolling walk-forward backtest with a pluggable optimizer.
+    """Run a generic walk-forward backtest with pluggable optimizer.
 
-    The optimizer is called once per rebalance date with the trailing
-    in-sample window and must return a Series of target weights indexed by
-    ticker.
-
-    Args:
-        returns: Daily returns DataFrame. Columns are asset tickers.
-        optimizer_fn: Callable with signature compatible with
-            ``optimizer_fn(training_window, config=optimizer_config, **optimizer_kwargs)``.
-        optimizer_config: Optional optimizer constraint/config dictionary.
-        lookback_window: Number of trading days in each training window.
-        rebalance_frequency: One of ``monthly``, ``quarterly``, ``weekly``.
-        strategy_name: Name assigned to the output daily return Series.
-        optimizer_kwargs: Optional keyword arguments forwarded to optimizer_fn.
-
-    Returns:
-        Tuple of ``(portfolio_returns, weights_history, turnover_history)``.
+    holding_return_method:
+    - drifted_buy_and_hold: baseline monthly-rebalance methodology.
+    - constant_target_weights: legacy daily constant-mix approximation.
     """
     optimizer_kwargs = {} if optimizer_kwargs is None else dict(optimizer_kwargs)
+    method = str(holding_return_method).strip().lower()
+
+    if method not in {"drifted_buy_and_hold", "constant_target_weights"}:
+        raise ValueError(
+            "Unsupported holding_return_method: "
+            f"{holding_return_method}. Use 'drifted_buy_and_hold' or 'constant_target_weights'."
+        )
 
     rebalance_dates = get_rebalance_dates(
         returns.index,
         lookback_window,
         rebalance_frequency=rebalance_frequency,
+        allow_weekend_rebalances=allow_weekend_rebalances,
     )
-
     if not rebalance_dates:
         raise ValueError(
-            f"No valid rebalance dates found.  "
+            "No valid rebalance dates found. "
             f"Need at least {lookback_window} rows of history before first rebalance."
         )
 
-    portfolio_return_segments: list[pd.Series] = []
-    weights_records: list[dict] = []
-    turnover_records: list[dict] = []
+    portfolio_segments: list[pd.Series] = []
+    weights_records: list[dict[str, Any]] = []
+    turnover_records: list[dict[str, Any]] = []
 
-    prev_target_weights: pd.Series | None = None
-    prev_holding_returns: pd.DataFrame | None = None
+    previous_pretrade_weights: pd.Series | None = None
 
     for i, rebal_date in enumerate(rebalance_dates):
         rebal_pos = returns.index.get_loc(rebal_date)
         training_window = returns.iloc[rebal_pos - lookback_window : rebal_pos]
 
         try:
-            weights = optimizer_fn(
-                training_window,
-                config=optimizer_config,
-                **optimizer_kwargs,
-            )
+            target_weights = optimizer_fn(training_window, config=optimizer_config, **optimizer_kwargs)
         except ValueError as exc:
             print(f"  Warning: optimisation failed on {rebal_date.date()} - {exc}")
             continue
@@ -242,40 +181,55 @@ def run_rolling_backtest(
         if holding_returns.empty:
             continue
 
-        tickers = weights.index.tolist()
-        daily_port_return = (holding_returns[tickers] * weights.values).sum(axis=1)
+        if method == "drifted_buy_and_hold":
+            daily_port_return, arriving_pretrade_weights = _compute_daily_returns_drifted_buy_and_hold(
+                holding_returns=holding_returns,
+                target_weights=target_weights,
+            )
+        else:
+            daily_port_return, arriving_pretrade_weights = _compute_daily_returns_constant_mix(
+                holding_returns=holding_returns,
+                target_weights=target_weights,
+            )
+
         daily_port_return.name = strategy_name
-        portfolio_return_segments.append(daily_port_return)
+        portfolio_segments.append(daily_port_return)
 
-        record = {"rebalance_date": rebal_date}
-        record.update(weights.to_dict())
-        weights_records.append(record)
+        weight_record = {"rebalance_date": rebal_date}
+        weight_record.update(target_weights.to_dict())
+        weights_records.append(weight_record)
 
-        is_initial = (i == 0) or (prev_target_weights is None)
+        is_initial = previous_pretrade_weights is None
         if is_initial:
             turnover = 0.0
             n_changed = 0
             max_abs_change = 0.0
+            pretrade_for_record = target_weights
         else:
-            pretrade = compute_pretrade_weights(prev_target_weights, prev_holding_returns)
-            turnover = compute_turnover_one_way(weights, pretrade)
-            abs_changes = (weights.reindex(pretrade.index, fill_value=0.0)
-                           - pretrade.reindex(weights.index, fill_value=0.0)).abs()
+            pretrade_for_record = previous_pretrade_weights
+            turnover = compute_turnover_one_way(target_weights, pretrade_for_record)
+            all_tickers = target_weights.index.union(pretrade_for_record.index)
+            abs_changes = (
+                target_weights.reindex(all_tickers, fill_value=0.0)
+                - pretrade_for_record.reindex(all_tickers, fill_value=0.0)
+            ).abs()
             n_changed = int((abs_changes > 1e-6).sum())
             max_abs_change = float(abs_changes.max())
 
-        turnover_records.append({
-            "rebalance_date": rebal_date,
-            "turnover_one_way": turnover,
-            "is_initial_rebalance": is_initial,
-            "n_assets_changed": n_changed,
-            "max_abs_weight_change": max_abs_change,
-        })
+        turnover_records.append(
+            {
+                "rebalance_date": rebal_date,
+                "turnover_one_way": turnover,
+                "is_initial_rebalance": bool(is_initial),
+                "n_assets_changed": int(n_changed),
+                "max_abs_weight_change": max_abs_change,
+                "holding_return_method": method,
+            }
+        )
 
-        prev_target_weights = weights
-        prev_holding_returns = holding_returns
+        previous_pretrade_weights = arriving_pretrade_weights
 
-    portfolio_returns = pd.concat(portfolio_return_segments).sort_index()
+    portfolio_returns = pd.concat(portfolio_segments).sort_index()
     portfolio_returns.name = strategy_name
 
     weights_history = pd.DataFrame(weights_records).set_index("rebalance_date")
@@ -286,42 +240,17 @@ def run_rolling_backtest(
 
     return portfolio_returns, weights_history, turnover_history
 
+
 def run_min_variance_backtest(
     returns: pd.DataFrame,
     optimizer_config: dict[str, Any] | None = None,
     lookback_window: int = 252,
     rebalance_frequency: str = "monthly",
     covariance_method: str = "sample",
+    holding_return_method: str = "drifted_buy_and_hold",
+    allow_weekend_rebalances: bool = True,
 ) -> tuple[pd.Series, pd.DataFrame, pd.DataFrame]:
-    """Run a rolling minimum variance backtest.
-
-    At each rebalance date the optimiser sees only the trailing lookback window
-    (strictly before the rebalance date).  The resulting weights are then held
-    fixed until the next rebalance date.
-
-    Turnover is computed against pre-trade drifted weights (not naive
-    target-to-target differences).  The first rebalance always has
-    ``turnover_one_way = 0.0`` and ``is_initial_rebalance = True``.
-
-    Args:
-        returns          : Daily returns DataFrame.  Columns are asset tickers.
-        optimizer_config : Constraint config dict from ``load_optimizer_config()``.
-                           If None, loaded from YAML automatically.
-        lookback_window  : Number of trading days used as the estimation window.
-        rebalance_frequency: Rebalance schedule. One of ``monthly``, ``quarterly``,
-                   or ``weekly``.
-        covariance_method: Covariance estimator for the optimiser. One of
-               ``sample`` or ``ledoit_wolf``.
-
-    Returns:
-        A tuple of:
-        - portfolio_returns  : Daily portfolio return Series over the OOS period.
-        - weights_history    : DataFrame with one row per rebalance date; columns
-                               are asset tickers.
-        - turnover_history   : DataFrame with one row per rebalance date and
-                               columns: ``turnover_one_way``, ``is_initial_rebalance``,
-                               ``n_assets_changed``, ``max_abs_weight_change``.
-    """
+    """Run rolling minimum variance backtest with configurable holding method."""
     if optimizer_config is None:
         optimizer_config = load_optimizer_config()
 
@@ -333,4 +262,6 @@ def run_min_variance_backtest(
         rebalance_frequency=rebalance_frequency,
         strategy_name="min_variance",
         optimizer_kwargs={"covariance_method": covariance_method},
+        holding_return_method=holding_return_method,
+        allow_weekend_rebalances=allow_weekend_rebalances,
     )

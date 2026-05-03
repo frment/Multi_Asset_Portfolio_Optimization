@@ -27,6 +27,69 @@ The goal is to produce a research-grade portfolio study, not a promotional argum
 
 ---
 
+## Methodological Audit Fixes (v0.4.1)
+
+This repository includes an explicit methodological hardening pass before Chapter 5.
+
+Baseline methodology now enforced:
+
+- Calendar policy: `business_day_aligned`.
+- Holding return method: `drifted_buy_and_hold`.
+- Rebalance schedule: first available date in each month of the aligned index.
+- Annualization: read from dataset metadata (baseline `252`).
+- Regime reproducibility: HMM primary with explicit failure if requested and unavailable when fallback is disabled.
+
+Important warning:
+
+Previous calendar-day processing is not the baseline because mixing 24/7 crypto and weekday ETFs can create artificial zero returns for TradFi assets and inconsistent annualization assumptions.
+
+Sensitivity mode is still available (`calendar_day` + `constant_target_weights`) for controlled before/after comparisons.
+
+---
+
+## Reproducible Execution
+
+Install dependencies:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Run pipeline (Chapter 1-4):
+
+```bash
+python scripts/run_all_chapters.py
+```
+
+Run full test suite:
+
+```bash
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 python -m pytest -q
+```
+
+Windows PowerShell equivalent:
+
+```powershell
+$env:OMP_NUM_THREADS='1'; $env:OPENBLAS_NUM_THREADS='1'; $env:MKL_NUM_THREADS='1'; python -m pytest -q
+```
+
+Generate before/after audit comparison report:
+
+```bash
+python scripts/run_audit_fix_comparison.py
+```
+
+Main outputs:
+
+- `data/processed/dataset_metadata.json`
+- `data/processed/backtest_summary.csv`
+- `data/processed/benchmark_summary.csv`
+- `data/processed/regime_analysis/regime_model_metadata.json`
+- `outputs/audit_fix_comparison.csv`
+- `outputs/audit_fix_comparison.md`
+
+---
+
 ## Research Question
 
 > Does a bounded and risk-disciplined allocation to BTC and ETH improve the risk-adjusted performance of a traditional multi-asset portfolio when we impose realistic constraints, compare against strong benchmarks, account for turnover/costs, and validate out-of-sample?

@@ -25,7 +25,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import load_robustness, load_settings  # noqa: E402
+from src.config import (  # noqa: E402
+    get_calendar_settings,
+    load_dataset_metadata,
+    load_robustness,
+    load_settings,
+    resolve_annualization_factor,
+)
 from src.optimizer import load_optimizer_config  # noqa: E402
 from src.robustness import run_first_pass_robustness  # noqa: E402
 from src.utils import ensure_directory  # noqa: E402
@@ -55,6 +61,11 @@ def main() -> None:
         optimizer_config = load_optimizer_config()
         backtest_cfg = settings.get("backtest", {})
         robustness_cfg = load_robustness()
+        dataset_metadata = load_dataset_metadata()
+        calendar_cfg = get_calendar_settings(settings)
+        annualization_factor = resolve_annualization_factor(settings=settings, dataset_metadata=dataset_metadata)
+        holding_return_method = str(backtest_cfg.get("holding_return_method", "drifted_buy_and_hold"))
+        allow_weekend_rebalances = bool(calendar_cfg.get("allow_weekend_rebalances", False))
 
         default_lookback = int(backtest_cfg.get("lookback_window_days", 252))
         default_rebalance_frequency = str(backtest_cfg.get("rebalance_frequency", "monthly"))
@@ -95,6 +106,10 @@ def main() -> None:
         ]
 
         print("Running Chapter 2 first-pass robustness (min_variance only)...")
+        print(f"  calendar_policy       : {dataset_metadata.get('calendar_policy', calendar_cfg.get('policy'))}")
+        print(f"  annualization_factor  : {annualization_factor}")
+        print(f"  holding_return_method : {holding_return_method}")
+        print(f"  rebalance_frequency   : {rebalance_frequency}")
         outputs = run_first_pass_robustness(
             returns=returns,
             base_optimizer_config=optimizer_config,
@@ -108,6 +123,9 @@ def main() -> None:
             covariance_methods=covariance_methods,
             include_no_crypto_anchor_in_covariance_family=include_no_crypto_anchor_in_covariance_family,
             cost_scenarios_bps=cost_scenarios_bps,
+            annualization_factor=annualization_factor,
+            holding_return_method=holding_return_method,
+            allow_weekend_rebalances=allow_weekend_rebalances,
         )
 
         summary_csv = robustness_dir / "robustness_summary.csv"

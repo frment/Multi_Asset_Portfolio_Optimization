@@ -16,7 +16,13 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.backtest import run_min_variance_backtest, run_rolling_backtest  # noqa: E402
-from src.config import load_settings, load_tail_risk  # noqa: E402
+from src.config import (  # noqa: E402
+    get_calendar_settings,
+    load_dataset_metadata,
+    load_settings,
+    load_tail_risk,
+    resolve_annualization_factor,
+)
 from src.costs import (  # noqa: E402
     apply_rebalance_costs_to_daily_returns,
     bps_to_rate,
@@ -54,10 +60,15 @@ def _summary_row(
     lookback_window_days: int,
     rebalance_frequency: str,
     max_total_crypto_weight: float,
+    annualization_factor: float,
 ) -> dict:
-    perf = compute_all_metrics(returns, risk_free_rate=risk_free_rate)
+    perf = compute_all_metrics(
+        returns,
+        risk_free_rate=risk_free_rate,
+        annualization_factor=annualization_factor,
+    )
     es = expected_shortfall_historical(returns, beta=beta)
-    ratio = return_over_es(returns, beta=beta)
+    ratio = return_over_es(returns, beta=beta, annualization_factor=annualization_factor)
 
     op_turnover = turnover_history.loc[
         ~turnover_history["is_initial_rebalance"],
@@ -100,6 +111,11 @@ def main() -> None:
         returns = _load_returns(processed_dir / "returns_simple.csv")
 
         backtest_cfg = settings.get("backtest", {})
+        dataset_metadata = load_dataset_metadata()
+        calendar_cfg = get_calendar_settings(settings)
+        annualization_factor = resolve_annualization_factor(settings=settings, dataset_metadata=dataset_metadata)
+        holding_return_method = str(backtest_cfg.get("holding_return_method", "drifted_buy_and_hold"))
+        allow_weekend_rebalances = bool(calendar_cfg.get("allow_weekend_rebalances", False))
         risk_free_rate = float(backtest_cfg.get("risk_free_rate", 0.0))
 
         tr = tail_cfg.get("tail_risk", {})
@@ -110,6 +126,12 @@ def main() -> None:
         lookback = int(tr.get("lookback_window_days", 252))
         rebalance_frequency = str(tr.get("rebalance_frequency", "monthly"))
         beta = float(tr.get("beta", 0.95))
+
+        print("Methodology settings")
+        print(f"  calendar_policy       : {dataset_metadata.get('calendar_policy', calendar_cfg.get('policy'))}")
+        print(f"  annualization_factor  : {annualization_factor}")
+        print(f"  holding_return_method : {holding_return_method}")
+        print(f"  rebalance_frequency   : {rebalance_frequency}")
 
         central_crypto_cap = float(constraints.get("max_total_crypto_weight", 0.20))
 
@@ -162,6 +184,8 @@ def main() -> None:
                     optimizer_config=cfg,
                     lookback_window=lookback,
                     rebalance_frequency=rebalance_frequency,
+                    holding_return_method=holding_return_method,
+                    allow_weekend_rebalances=allow_weekend_rebalances,
                 )
             else:
                 series, weights_history, turnover_history = run_rolling_backtest(
@@ -172,6 +196,8 @@ def main() -> None:
                     rebalance_frequency=rebalance_frequency,
                     strategy_name=strategy_name,
                     optimizer_kwargs={"beta": float(spec.get("beta", beta))},
+                    holding_return_method=holding_return_method,
+                    allow_weekend_rebalances=allow_weekend_rebalances,
                 )
 
             strategy_returns[strategy_name] = series.rename(strategy_name)
@@ -206,6 +232,7 @@ def main() -> None:
                     lookback_window_days=lookback,
                     rebalance_frequency=rebalance_frequency,
                     max_total_crypto_weight=float(spec["max_total_crypto_weight"]),
+                    annualization_factor=annualization_factor,
                 )
             )
 
@@ -282,9 +309,17 @@ def main() -> None:
                 net_series, _ = apply_rebalance_costs_to_daily_returns(gross_series, rebalance_costs)
                 net_returns[strategy] = net_series
 
-                perf = compute_all_metrics(net_series, risk_free_rate=risk_free_rate)
                 es = expected_shortfall_historical(net_series, beta=float(row["beta"]))
-                ratio = return_over_es(net_series, beta=float(row["beta"]))
+                perf = compute_all_metrics(
+                    net_series,
+                    risk_free_rate=risk_free_rate,
+                    annualization_factor=annualization_factor,
+                )
+                ratio = return_over_es(
+                    net_series,
+                    beta=float(row["beta"]),
+                    annualization_factor=annualization_factor,
+                )
 
                 net_rows.append(
                     {
@@ -326,6 +361,7 @@ def main() -> None:
                     beta=beta,
                     risk_free_rate=risk_free_rate,
                     scope="gross",
+                    annualization_factor=annualization_factor,
                 )
             )
             stress_frames.append(
@@ -335,6 +371,7 @@ def main() -> None:
                     beta=beta,
                     risk_free_rate=risk_free_rate,
                     scope="net",
+                    annualization_factor=annualization_factor,
                 )
             )
         else:
@@ -345,6 +382,7 @@ def main() -> None:
                     beta=beta,
                     risk_free_rate=risk_free_rate,
                     scope="gross",
+                    annualization_factor=annualization_factor,
                 )
             )
 

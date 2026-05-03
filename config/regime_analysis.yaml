@@ -60,11 +60,12 @@ detection:
   # "hmm"    : Gaussian HMM (requires hmmlearn; falls back to kmeans if unavailable)
   # "kmeans" : KMeans clustering
   primary_model: "hmm"
+  allow_fallback: false
 
   # ---- Default number of regimes ---------------------------------------------
   # 2 = Low-stress/Risk-on vs High-stress/Risk-off
   # 3 adds a Mixed/Transition state — evaluated but not the default
-  n_states_default: 2
+  n_states: 2
 
   # ---- Candidate model grid (all four are fit and reported) ------------------
   candidate_models:
@@ -95,7 +96,7 @@ detection:
     realized_vol_btc_usd_63d:   1.0
     drawdown_spy_126d:         -1.0   # drawdown ≤ 0; negate so higher = more stress
     drawdown_btc_usd_126d:     -1.0
-    corr_spy_btc_usd_126d:     -1.0   # high SPY-BTC correlation = risk-on; negate for stress
+    corr_spy_btc_usd_126d:      1.0   # high SPY-BTC correlation = higher systemic stress
     corr_spy_tlt_126d:          1.0   # SPY-TLT correlation rising toward 0/+ = more stress
 
   # ---- Human-readable state names -------------------------------------------
@@ -113,6 +114,7 @@ detection:
     regime_labels:            "data/processed/regime_analysis/regime_labels.csv"
     regime_model_summary:     "data/processed/regime_analysis/regime_model_summary.csv"
     regime_transition_matrix: "data/processed/regime_analysis/regime_transition_matrix.csv"
+    regime_model_metadata:    "data/processed/regime_analysis/regime_model_metadata.json"
 
 # ── Regime evaluation parameters (Phase 3) ────────────────────────────────────
 evaluation:
