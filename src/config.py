@@ -74,3 +74,12 @@ def load_tail_risk() -> dict[str, Any]:
         Dictionary with CVaR setup, comparators, costs, and stress windows.
     """
     return load_yaml("tail_risk.yaml")
+
+
+def load_regime_analysis() -> dict[str, Any]:
+    """Load Chapter 4 regime-analysis configuration.
+
+    Returns:
+        Dictionary with feature windows, paths, and NaN-handling strategy.
+    """
+    return load_yaml("regime_analysis.yaml")
